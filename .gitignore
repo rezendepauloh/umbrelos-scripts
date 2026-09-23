@@ -1,0 +1,22 @@
+# Arquivos de ambiente e segredos locais
+config.env
+.env
+*.env
+config/samba/smb.conf
+!*.example
+!*.env.example
+
+# Chaves e certificados
+*.key
+*.pem
+id_rsa*
+id_ed25519*
+
+# Volumes de dados locais das Stacks Docker
+**/data/
+compose/**/data/
+
+# Logs e temporários
+*.log
+temp/
+.DS_Store

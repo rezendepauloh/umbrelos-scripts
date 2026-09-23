@@ -1,0 +1,92 @@
+services:
+  mongodb:
+    image: mongo:8
+    container_name: betor-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${BETOR_MONGO_USER:-betor}
+      MONGO_INITDB_ROOT_PASSWORD: ${BETOR_MONGO_PASSWORD:-betor}
+    volumes:
+      - ./data/mongodb:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:8
+    container_name: betor-redis
+    volumes:
+      - ./data/redis:/data
+    restart: unless-stopped
+
+  celery-worker-items:
+    image: dougppaz/betor:latest
+    container_name: betor-worker-items
+    command: ["celery", "-A", "betor.celery.app", "worker", "-Q", "items"]
+    depends_on:
+      - redis
+    environment:
+      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:-betor}@mongodb:27017
+      - DATABASE_REDIS_URL=redis://redis:6379/0
+      - BETOR_CELERY_BACKEND_URL=redis://redis:6379/1
+      - BETOR_CELERY_BROKER_URL=redis://redis:6379/1
+      - SCRAPYD_BASE_URL=http://scrapyd:6800
+      - FLARESOLVERR_BASE_URL=http://flaresolverr:8191
+    restart: unless-stopped
+
+  celery-worker-api-requests:
+    image: dougppaz/betor:latest
+    container_name: betor-worker-api
+    command: ["celery", "-A", "betor.celery.app", "worker", "-Q", "api-requests"]
+    depends_on:
+      - redis
+    environment:
+      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:-betor}@mongodb:27017
+      - DATABASE_REDIS_URL=redis://redis:6379/0
+      - BETOR_CELERY_BACKEND_URL=redis://redis:6379/1
+      - BETOR_CELERY_BROKER_URL=redis://redis:6379/1
+      - SCRAPYD_BASE_URL=http://scrapyd:6800
+      - FLARESOLVERR_BASE_URL=http://flaresolverr:8191
+    restart: unless-stopped
+
+  scrapyd:
+    image: dougppaz/betor:latest
+    container_name: betor-scrapyd
+    command: ["scrapyd"]
+    depends_on:
+      - mongodb
+      - redis
+    environment:
+      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:-betor}@mongodb:27017
+      - DATABASE_REDIS_URL=redis://redis:6379/0
+      - BETOR_CELERY_BACKEND_URL=redis://redis:6379/1
+      - BETOR_CELERY_BROKER_URL=redis://redis:6379/1
+      - SCRAPYD_BASE_URL=http://scrapyd:6800
+      - FLARESOLVERR_BASE_URL=http://flaresolverr:8191
+    restart: unless-stopped
+
+  betor-api:
+    image: dougppaz/betor:latest
+    container_name: betor-api
+    command: ["fastapi", "run", "betor/api/app.py"]
+    depends_on:
+      - mongodb
+      - redis
+      - scrapyd
+    environment:
+      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:-betor}@mongodb:27017
+      - DATABASE_REDIS_URL=redis://redis:6379/0
+      - BETOR_CELERY_BACKEND_URL=redis://redis:6379/1
+      - BETOR_CELERY_BROKER_URL=redis://redis:6379/1
+      - SCRAPYD_BASE_URL=http://scrapyd:6800
+      - FLARESOLVERR_BASE_URL=http://flaresolverr:8191
+      - STORE_TORRENT_FILE_SAVE_URL=local:///torrents
+      - DOWNLOAD_ITEMS_STORE_SAVE_URL=local:///items-data
+    ports:
+      - "8005:8000"
+    volumes:
+      - ./data/items-data:/items-data
+      - ./data/torrents:/torrents
+    restart: unless-stopped
+
+networks:
+  default:
+    name: homelab_network
+    external: true

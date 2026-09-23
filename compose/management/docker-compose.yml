@@ -1,0 +1,84 @@
+services:
+  # Dockge - Gerenciador visual moderno e reativo de Stacks Docker Compose
+  dockge:
+    image: louislam/dockge:latest
+    container_name: dockge
+    restart: unless-stopped
+    ports:
+      - "${DOCKGE_PORT:-5001}:5001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data/dockge:/app/data
+      - ../../compose:/opt/stacks
+    environment:
+      - DOCKGE_STACKS_DIR=/opt/stacks
+
+  # Dozzle - Visualizador em tempo real de logs e estatísticas de todos os containers
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    ports:
+      - "${DOZZLE_PORT:-8888}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/dozzle:/data
+    environment:
+      - DOZZLE_LEVEL=info
+      - DOZZLE_REMOTE_AGENT=${POPOS_HOST:-127.0.0.1}:7007?name=pop-os
+
+  # Uptime Kuma - Painel de monitoramento visual de serviços internos e externos
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "${UPTIME_KUMA_PORT:-3001}:3001"
+    volumes:
+      - ./data/uptime-kuma:/app/data
+
+  # IT-Tools - Suíte prática de ferramentas para desenvolvedores e sysadmins
+  it-tools:
+    image: corentinth/it-tools:latest
+    container_name: it-tools
+    restart: unless-stopped
+    ports:
+      - "${IT_TOOLS_PORT:-8080}:80"
+
+  # Syncthing - Sincronização P2P contínua e ultra rápida de arquivos para o Nextcloud
+  syncthing:
+    image: lscr.io/linuxserver/syncthing:latest
+    container_name: syncthing
+    hostname: umbrel-syncthing
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIMEZONE:-America/Sao_Paulo}
+    volumes:
+      - ./data/syncthing/config:/config
+      - ${NEXTCLOUD_DATA_DIR:-/mnt/storage/nextcloud/data}:/data/nextcloud
+      - ${STORAGE_BASE_DIR:-/mnt/storage}/users:/data/users
+    ports:
+      - "${SYNCTHING_WEB_PORT:-8384}:8384"
+      - "${SYNCTHING_TRANSFER_PORT:-22000}:22000/tcp"
+      - "${SYNCTHING_TRANSFER_PORT:-22000}:22000/udp"
+      - "${SYNCTHING_DISCOVERY_PORT:-21027}:21027/udp"
+    restart: unless-stopped
+
+  # Nginx Proxy Manager - Gerenciador visual de domínios amigáveis locais (*.pk.local) e certificados SSL
+  nginx-proxy-manager:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      - "${NPM_HTTP_PORT:-8088}:80"      # Porta HTTP para redirecionamento dos domínios locais
+      - "${NPM_WEB_PORT:-81}:81"         # Painel Administrativo Web
+      - "${NPM_HTTPS_PORT:-8443}:443"    # Porta HTTPS (SSL)
+    volumes:
+      - ./data/npm/data:/data
+      - ./data/npm/letsencrypt:/etc/letsencrypt
+
+networks:
+  default:
+    name: homelab_network
+    external: true
