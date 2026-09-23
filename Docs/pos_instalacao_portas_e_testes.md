@@ -455,9 +455,78 @@ O Nextcloud oficial do Umbrel foi totalmente homologado e integrado aos **HDs ex
      ```yaml
      volumes:
        - ${APP_DATA_DIR}/data/nextcloud:/var/www/html
-       - /home/umbrel/umbrel/external/disk1/users:/storage/users
-       - /home/umbrel/umbrel/external/disk1/shared:/storage/shared
+       - /home/umbrel/umbrel/external/disk2/users:/storage/users
+       - /home/umbrel/umbrel/external/disk2/shared:/storage/shared
      ```
+
+4. **Acesso Remoto via Tailscale (Configuração de `trusted_domains` e `trusted_proxies`):**
+   - Ao acessar o Nextcloud pelo smartphone via Tailscale (`http://<IP_TAILSCALE>:8081` ou `http://<MAGIC_DNS>:8081`), o Nextcloud bloqueia por padrão exibindo *"Acessar através de um domínio não confiável"*.
+   - **Solução Canônica e Persistente via `occ` (executada no SSH do mini PC):**
+     ```bash
+     NC_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -E 'nextcloud.*(app|web|server)' | head -n 1)
+
+     # 1. Adicionar o IP do Tailscale e MagicDNS aos domínios confiáveis
+     sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:set trusted_domains 3 --value="<SEU_IP_TAILSCALE>"
+     sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:set trusted_domains 4 --value="<SEU_MAGICDNS_TAILSCALE>"
+     sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:set trusted_domains 5 --value="192.168.0.8"
+     sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:set trusted_domains 6 --value="nuvem.pk.local"
+     sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:set trusted_domains 7 --value="umbrel.local"
+
+     # 2. Configurar a sub-rede do Tailscale e LAN como proxies confiáveis
+     sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:set trusted_proxies 0 --value="100.64.0.0/10"
+     sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:set trusted_proxies 1 --value="192.168.0.0/16"
+
+     # 3. Conferir a lista atualizada
+     sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:get trusted_domains
+     ```
+   - Essa alteração grava diretamente no arquivo persistente `config/config.php` do Nextcloud no volume do Umbrel, mantendo-se ativa mesmo após reboots.
+
+5. **Como Conectar e Sincronizar em Todos os Dispositivos (Apps Oficiais):**
+
+   > 💡 **Dica de Ouro de Conectividade:**
+   > - **Dentro de Casa (Wi-Fi Local):** Use `http://192.168.0.8:8081` ou `http://nuvem.pk.local` (ou `http://umbrel.local:8081`).
+   > - **Fora de Casa / 4G / 5G / Qualquer Lugar:** Ative a VPN **Tailscale** no aparelho e use o endereço do Tailscale (ex: `http://<IP_TAILSCALE>:8081` ou `http://<SEU_MAGICDNS_TAILSCALE>:8081`).
+   > - **Recomendação Máxima:** Se você mantiver o Tailscale ativo no smartphone, tablet ou notebook, pode cadastrar diretamente o endereço do Tailscale no aplicativo; assim ele sincronizará de forma 100% transparente tanto dentro quanto fora de casa!
+
+   - 📱 **Android (Smartphones & Tablets Samsung - Galaxy / Tab):**
+     1. Instale o app oficial **Nextcloud** pela Google Play Store.
+     2. Ao abrir, clique em **Entrar (Log in)**.
+     3. No campo de endereço do servidor, digite:
+        `http://<IP_TAILSCALE>:8081` (ou `http://192.168.0.8:8081` se estiver no Wi-Fi).
+     4. Uma janela do navegador interno abrirá solicitando login: entre com `paulo` (ou `kamila`) e a respectiva senha.
+     5. Clique em **Conceder Acesso**.
+     6. **Dica para Backup de Fotos (Auto Upload):**
+        - No menu lateral do app, vá em **Envio automático (Auto upload)**.
+        - Ative a pasta `Camera` (DCIM).
+        - Marque a opção *"Enviar apenas ao carregar"* e *"Apenas no Wi-Fi"* conforme sua preferência.
+
+   - 🍏 **iOS / iPadOS (iPhone e iPad):**
+     1. Instale o app **Nextcloud** pela App Store da Apple.
+     2. Abra o app e clique em **Entrar**.
+     3. Insira o endereço: `http://<IP_TAILSCALE>:8081` (ou `http://192.168.0.8:8081`).
+     4. Autentique-se com sua conta pessoal (`paulo` ou `kamila`).
+     5. O Nextcloud no iOS se integra nativamente ao app **Arquivos (Files)** da Apple!
+        - Abra o app **Arquivos**, toque nos três pontinhos (`...`) ➡️ **Editar Barra Lateral** e ative a chavinha do **Nextcloud**.
+        - Você poderá salvar documentos do Word, PDF, notas e planilhas diretamente no Nextcloud como se fosse o iCloud Drive.
+
+   - 🐧 **Linux (Pop!_OS Desktop):**
+     - **Opção 1 (Cliente de Sincronização Oficial - Estilo Google Drive/Dropbox):**
+       - Instale o cliente desktop oficial via Flatpak ou APT:
+         ```bash
+         flatpak install flathub com.nextcloud.desktopclient.nextcloud
+         # ou: sudo apt install nextcloud-desktop
+         ```
+       - Abra o Nextcloud, informe o endereço do servidor (`http://192.168.0.8:8081` ou IP Tailscale), autentique no navegador e escolha qual pasta local deseja manter sincronizada.
+     - **Opção 2 (Acesso Direto via Rede Local - Sem ocupar espaço em disco):**
+       - No Pop!_OS, o acesso mais rápido aos mesmos arquivos é via **Samba (Nautilus)**:
+         Pressione `Ctrl + L` no Nautilus e conecte em `smb://192.168.0.8/Paulo` ou `smb://192.168.0.8/Compartilhado`. Tudo o que você colocar ali já aparece instantaneamente no Nextcloud.
+
+   - 🪟 **Windows (PC / Notebook):**
+     1. Baixe o instalador oficial do **Nextcloud Desktop Client** em [nextcloud.com/install](https://nextcloud.com/install/#install-clients).
+     2. Instale e abra o programa.
+     3. Clique em **Entrar** e insira o endereço `http://192.168.0.8:8081` (ou IP Tailscale).
+     4. Autorize no navegador web com seu usuário e senha.
+     5. O Nextcloud criará uma pasta no seu Windows Explorer (com suporte a arquivos sob demanda / Virtual Files), permitindo visualizar tudo sem baixar gigabytes desnecessários.
 
 #### 5.4. Syncthing (Sincronização P2P Contínua: Pop!_OS ↔ Mini PC / Nextcloud)
 

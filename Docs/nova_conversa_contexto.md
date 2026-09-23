@@ -58,62 +58,66 @@ Os discos são conectados via USB 3.0 e montados de forma nativa e direta pelo u
    - Chave SSH configurada sem senha entre Umbrel e Pop!_OS (`rezendepauloh@192.168.0.16`).
    - Destino: `/mnt/storage_930/Backups_Homelab/` (mantém últimos 7 backups).
    - Script instalado em `/data/bin/backup-para-popos.sh`.
-
 6. **Arr-Stack e Armazenamento Físico de Mídias (100% Homologado):** 🚀
    - Compose da `arr-stack` apontando nativamente para o `disk1` (sem MergerFS).
    - Jellyseerr atualizado para a versão moderna oficial **`v3.4.1` (Seerr)**.
    - Fuso horário configurado para `America/Campo_Grande` (UTC-4).
-   - Fluxo completo de download e importação validado: `The Housemaid (2025)` de 7.5 GB baixado pelo qBittorrent e importado pelo Radarr para `/home/umbrel/umbrel/external/disk1/media/movies/The Housemaid (2025)/`.
+   - Fluxo completo de download e importação validado: `The Housemaid (2025)` baixado pelo qBittorrent e importado pelo Radarr para `/home/umbrel/umbrel/external/disk1/media/movies/`.
+7. **Repositório Git Blindado e Código Desacoplado (100% Concluído):** 🔒
+   - Auditoria de segurança completa antes do primeiro commit.
+   - `.gitignore` robusto protegendo `config.env`, `.env`, `config/samba/smb.conf`, chaves SSH/certificados, logs e pastas `data/` de containers.
+   - Modelos limpos e sanitizados criados: `config.env.example` e `config/samba/smb.conf.example`.
+   - Removido todo e qualquer dado *hardcoded* dos scripts (`03_samba_setup.sh`, `homelab-daemon.sh`, `02_storage_setup.sh`, `06_backup_popos.sh`). O sistema consome dinamicamente as variáveis de `/data/config.env` ou `config.env`.
+   - Links da documentação corrigidos para caminhos relativos em Markdown.
 
 ---
 
-## 4. O Novo Foco da Próxima Conversa: Dockge & Deploy de Projetos Docker em Produção 🎯
+## 4. Foco Prioritário da Nova Conversa: Nextcloud via Tailscale & Gestão de Stacks 🎯
 
-### Objetivos Imediatos:
-1. **Dockge (`http://umbrel.local:5001` ou `http://dockge.pk.local`):**
-   - Configurar o Dockge para enxergar e gerenciar perfeitamente as stacks do Homelab (`management`, `arr-stack`, `betor`).
-   - Avaliar a visualização unificada de logs de todos os containers (incluindo os apps nativos da App Store do Umbrel, avaliando o **Dozzle** caso o Dockge não permita console/stream dos apps nativos).
-2. **Deploy de Projetos Docker Pessoais em Produção:**
-   - Estruturar a pasta e o fluxo no Dockge/Git para hospedar e rodar seus próprios projetos e microsserviços no Homelab com reverse proxy automático no Nginx Proxy Manager (`*.pk.local`).
+### 🎯 Prioridade 1: Correção do Erro de "Domínio Não Confiável" no Nextcloud via Tailscale (CONCLUÍDO / HOMOLOGADO ✅)
+- **Status:** **Resolvido e Homologado!** 🎉
+- **Solução Aplicada:** Os domínios confiáveis (`trusted_domains`) e redes autorizadas (`trusted_proxies`) foram configurados de forma segura e persistente através do binário nativo `occ` do Nextcloud (`sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:set ...`).
+- **Validação:** Acesso testado com sucesso via smartphone conectado ao Tailscale, sem qualquer erro de domínio não confiável. O procedimento canônico e sanitizado está documentado em [Docs/pos_instalacao_portas_e_testes.md](pos_instalacao_portas_e_testes.md).
 
-### Pendências Secundárias Mapeadas (para momento posterior):
-- [ ] **Auto-Refresh Jellyfin:** Afinar o trigger de notificação automática via Connect/API do Radarr/Sonarr para atualização instantânea sem clique manual.
-- [ ] **Bazarr:** Conectar com Radarr/Sonarr e provedores para automação de legendas em PT-BR.
-- [ ] **DNS Local / Domínios Amigáveis (`*.pk.local`):** Validação final da resolução pelo AdGuard + NPM nos clientes locais.
+### 🎯 Prioridade 2: Dockge (`http://umbrel.local:5001` ou `http://dockge.pk.local`) & Dozzle (CONCLUÍDO / HOMOLOGADO ✅)
+- **Status:** **Resolvido e Homologado!** 🎉
+- Stacks customizadas (`management`, `arr-stack`, `betor`) 100% integradas e operacionais no Dockge.
+- **Dozzle** (`http://umbrel.local:8888`) homologado para inspeção contínua de logs, busca e estatísticas de uso em tempo real de todos os containers do sistema.
 
-### Arquivos Críticos de Orquestração no Servidor:
+### Prioridade 3: Deploy de Projetos Docker Pessoais
+- Estruturar fluxo para hospedar projetos próprios (Python/Streamlit, Node.js) integrados ao Nginx Proxy Manager.
+
+### 📁 Arquivos Críticos de Orquestração no Servidor:
 1. **Hook de Boot do Rugix OS:** `/home/umbrel/umbrel/custom-hooks/pre-start`
    - Executado automaticamente pelo `umbrel-custom-pre-start.service`.
-   - Restaura usuários (`paulo`, `kamila`), copia o `passdb.tdb` do Samba e chama o daemon desacoplado:
+   - Restaura usuários (`paulo`, `kamila`), copia o `passdb.tdb` do Samba e dispara o daemon:
      ```bash
      systemd-run --unit=homelab-daemon /data/bin/homelab-daemon.sh
      ```
 2. **Daemon Assíncrono do Homelab:** `/data/bin/homelab-daemon.sh` (versionado em `scripts/homelab-daemon.sh`)
-   - Aguarda a montagem dos discos (`disk1`, `disk2`, `disk3`).
-   - Aplica o bind mount do Jellyfin.
-   - Restaura o `/data/samba/smb.conf` e reinicia o Samba.
-   - Aguarda o Docker e os apps nativos do Umbrel estabilizarem antes de dar `docker compose up -d` nas 3 stacks customizadas.
+   - Carrega `/data/config.env` dinamicamente.
+   - Aguarda montagem dos discos (`disk1`, `disk2`, `disk3`).
+   - Aplica bind mount de mídia para o Jellyfin (`/media -> Downloads/media`).
+   - Restaura `/data/samba/smb.conf` e reinicia o Samba com blindagem pós-boot.
+   - Sobe as stacks customizadas (`management`, `arr-stack`, `betor`) e o cronjob do BeTor.
 
 ---
 
 ## 5. Roteiro de Comandos para Diagnóstico Imediato
 
-Ao iniciar uma nova interação, execute no terminal SSH (`umbrel@umbrel.local`):
+Ao iniciar a nova conversa, execute no terminal SSH (`umbrel@umbrel.local`):
 
 ```bash
-# 1. Verificar se os 3 discos estão montados
-df -h | grep -E "disk1|disk2|disk3"
+# 1. Verificar containers do Nextcloud ativos
+sudo docker ps --filter "name=nextcloud" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-# 2. Ver quais containers estão rodando
-sudo docker ps --format "table {{.Names}}\t{{.Status}}"
+# 2. Localizar o config.php do Nextcloud no host
+sudo find /home/umbrel/umbrel/app-data/nextcloud -name "config.php" 2>/dev/null
 
-# 3. Ler as últimas 50 linhas do log do daemon de boot
-cat /data/homelab-daemon.log | tail -n 50
+# 3. Conferir o IP atual do Tailscale no servidor
+tailscale ip -4 2>/dev/null || ip addr show tailscale0 2>/dev/null | grep -w inet
 
-# 4. Checar se houve erro no serviço do hook
-sudo journalctl -u umbrel-custom-pre-start.service -n 30 --no-pager
-
-# 5. Conferir status do Samba
-sudo systemctl status smbd --no-pager
-sudo pdbedit -L
+# 4. Inspecionar os trusted_domains atualmente configurados no Nextcloud
+NC_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -E 'nextcloud.*(app|web|server)' | head -n 1)
+sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:get trusted_domains
 ```

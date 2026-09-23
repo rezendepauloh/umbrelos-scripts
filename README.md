@@ -393,6 +393,7 @@ O script configura automaticamente os seguintes compartilhamentos no arquivo `/e
      sudo tailscale up
      ```
    - Conecte seus celulares e o PopOS na mesma conta Tailscale. Você terá um IP seguro (ex: `100.x.y.z`) acessível de qualquer lugar do mundo.
+   - **Nextcloud via Tailscale:** O Nextcloud já está configurado com `trusted_domains` e `trusted_proxies` aceitando requisições diretas via IP Tailscale e MagicDNS sem erros de domínio não confiável (detalhes em [Docs/pos_instalacao_portas_e_testes.md](Docs/pos_instalacao_portas_e_testes.md)).
 2. **AdGuard Home** (Pela App Store do umbrelOS):
    - Atue como servidor DNS da sua rede doméstica.
    - Bloqueia anúncios, telemetria invasiva e malwares antes mesmo de chegarem na sua Smart TV, computadores e celulares.

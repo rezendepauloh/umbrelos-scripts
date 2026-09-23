@@ -61,9 +61,10 @@ Este documento centraliza todas as pendências identificadas, pontos de atençã
 
 Precisamos rodar testes práticos de ponta a ponta e validar as configurações dos seguintes serviços instalados:
 
-### 1. Dockge (`http://dockge.pk.local` ou porta `:5001`)
-- [ ] Validar se as stacks `management`, `arr-stack` e `betor` aparecem corretamente na interface.
-- [ ] Testar a edição de compose, visualização de logs em tempo real e comandos de Start / Stop / Restart pelo navegador.
+### 1. Dockge (`http://dockge.pk.local` ou porta `:5001`) & Dozzle (`:8888`) (CONCLUÍDO / HOMOLOGADO ✅)
+- [x] Validar se as stacks `management`, `arr-stack` e `betor` aparecem corretamente na interface.
+- [x] Testar a edição de compose, visualização de logs em tempo real e comandos de Start / Stop / Restart pelo navegador.
+- [x] Dozzle instalado e homologado na porta `:8888` (`http://umbrel.local:8888`), fornecendo visualização em tempo real de logs, consumo de CPU/memória e filtros para absolutamente todos os containers do Docker daemon (tanto nativos do Umbrel quanto stacks customizadas).
 
 ### 2. Uptime Kuma (`http://status.pk.local` ou porta `:3001`)
 - [ ] Criar conta de administrador inicial.
@@ -77,6 +78,7 @@ Precisamos rodar testes práticos de ponta a ponta e validar as configurações 
 - [x] Pastas `Meus Arquivos` (privadas) e `Compartilhado` integradas de ponta a ponta com os compartilhamentos Samba (`smb://192.168.0.8/Paulo`, `Kamila`, `Compartilhado`).
 - [x] Volumes persistentes mapeados no Compose oficial (`/home/umbrel/umbrel/app-data/nextcloud/docker-compose.yml`).
 - [x] Permissões e rotinas de automação atualizadas no `homelab-daemon.sh`.
+- [ ] Acesso remoto via Tailscale (VPN) 100% homologado em smartphones/dispositivos remotos com `trusted_domains` e `trusted_proxies` persistidos no `config.php` via `occ`.
 
 ### 4. Immich (`http://fotos.pk.local` ou porta `:2283`)
 - [ ] Testar primeiro login no Immich.
@@ -95,11 +97,8 @@ Precisamos rodar testes práticos de ponta a ponta e validar as configurações 
 - [ ] **Resolução DNS de Domínios Amigáveis (`*.pk.local`):** Verificar a propagação e escuta do AdGuard Home (`192.168.0.8:53`) e o roteamento do Nginx Proxy Manager (porta 80 -> 8088), diagnosticando por que clientes como o Pop!_OS e Smart TVs falham na resolução de nomes como `http://jellyfin.pk.local` mesmo respondendo por IP direto.
 - [ ] **Homologação Jellyfin em Smart TVs Samsung (Tizen):** Validar acesso no aplicativo oficial da Samsung TV e no Projetor The Freestyle via `http://192.168.0.8:8096` ou proxy reverso.
 
-### 8. Inspeção de Logs e Consoles dos Apps Nativos do Umbrel no Dockge (ou Dozzle)
-- [ ] **Visualização de Stacks Nativas no Dockge:** No Dockge, os apps instalados pela App Store do Umbrel (`jellyfin`, `nextcloud`, `immich`, `adguard-home`, `home-assistant`, `tailscale`) aparecem na lista lateral esquerda marcados como `"Esta stack não é gerenciada pelo Dockge"`, o que impede ver o terminal interativo e o stream contínuo de logs diretamente pela interface.
-- [ ] **Soluções a Avaliar:**
-  - *Opção A (Mapeamento no Dockge):* Criar links simbólicos ou mapear os diretórios `/home/umbrel/umbrel/app-data/*/docker-compose.yml` para dentro da pasta `stacks` do Dockge, permitindo que ele passe a reconhecer e abrir o terminal/logs sem necessariamente alterar o ciclo de vida do Umbrel.
-  - *Opção B (Dozzle - Visualizador Leve de Logs):* Adicionar na stack `management` o **Dozzle** (`http://umbrel.local:8888`), um container extremamente leve focado em exibir logs em tempo real, com busca, filtros e visualização de consumo de memória/CPU de absolutamente todos os containers do Docker daemon (nativos e customizados).
+### 8. Inspeção de Logs e Consoles dos Apps Nativos do Umbrel no Dockge / Dozzle (CONCLUÍDO / HOMOLOGADO ✅)
+- [x] **Solução Adotada (Opção B - Dozzle):** Implementado e homologado o **Dozzle** (`http://umbrel.local:8888` / `http://dozzle.pk.local`) na stack `management`. Ele monitora com eficiência o socket do Docker (`/var/run/docker.sock`), garantindo streaming contínuo de logs, busca instantânea e métricas de consumo de 100% dos containers (nativos do Umbrel e customizados).
 
 ---
 

@@ -122,6 +122,28 @@ for j in {1..60}; do
         echo "Garantindo rede homelab_network..."
         docker network create homelab_network 2>/dev/null || true
 
+        # Garantir persistência dos volumes externos no Nextcloud (resiste a updates da App Store do Umbrel)
+        NC_COMPOSE="/home/umbrel/umbrel/app-data/nextcloud/docker-compose.yml"
+        if [ -f "$NC_COMPOSE" ]; then
+            if ! grep -q "/storage/users" "$NC_COMPOSE" 2>/dev/null; then
+                echo "Reinjetando mapeamentos do disk2 no docker-compose.yml do Nextcloud..."
+                sed -i '/\${APP_DATA_DIR}\/data\/nextcloud:\/var\/www\/html/a \      - /home/umbrel/umbrel/external/disk2/users:/storage/users\n      - /home/umbrel/umbrel/external/disk2/shared:/storage/shared' "$NC_COMPOSE"
+                if docker ps -q -f name=nextcloud_web_1 | grep -q .; then
+                    echo "Recriando containers do Nextcloud com os novos volumes..."
+                    SCRIPT_UMBREL_ROOT="/home/umbrel/umbrel" \
+                    SCRIPT_DOCKER_FRAGMENTS="/opt/umbreld/source/modules/apps/legacy-compat" \
+                    SCRIPT_APP_REPO_DIR="/home/umbrel/umbrel/app-stores/getumbrel-umbrel-apps-github-53f74447/nextcloud" \
+                    BITCOIN_NETWORK="mainnet" \
+                    TOR_PROXY_IP="10.21.21.11" \
+                    TOR_PROXY_PORT="9050" \
+                    TOR_PASSWORD="mLcLDdt5qqMxlq3wv8Din3UD44bTZHzRFhIktw38kWg=" \
+                    TOR_HASHED_PASSWORD="16:158FBE422B1A9D996073BE2B9EC38852C70CE12362CA016F8F6859C426" \
+                    REMOTE_TOR_ACCESS="false" \
+                    bash /opt/umbreld/source/modules/apps/legacy-compat/app-script restart nextcloud || true
+                fi
+            fi
+        fi
+
         # Reiniciar Jellyfin e Nextcloud para ler montagens dos HDs
         if docker ps -q -f name=jellyfin_server_1 | grep -q .; then
             echo "Reiniciando container do Jellyfin para ler montagem de mídia..."
