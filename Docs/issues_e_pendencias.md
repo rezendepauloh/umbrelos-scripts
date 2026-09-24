@@ -74,11 +74,12 @@ Precisamos rodar testes práticos de ponta a ponta e validar as configurações 
 ### 3. Nextcloud (`http://nuvem.pk.local` ou porta `:8081`) (CONCLUÍDO / HOMOLOGADO ✅)
 - [x] Acesso web e onboarding do administrador `umbrel` concluídos.
 - [x] Contas pessoais criadas para `paulo` e `kamila` com senhas seguras.
-- [x] App `files_external` ativado e integrado com armazenamento nos HDs externos (`disk1`).
+- [x] App `files_external` ativado e integrado com armazenamento nos HDs externos (`disk2`).
 - [x] Pastas `Meus Arquivos` (privadas) e `Compartilhado` integradas de ponta a ponta com os compartilhamentos Samba (`smb://192.168.0.8/Paulo`, `Kamila`, `Compartilhado`).
 - [x] Volumes persistentes mapeados no Compose oficial (`/home/umbrel/umbrel/app-data/nextcloud/docker-compose.yml`).
-- [x] Permissões e rotinas de automação atualizadas no `homelab-daemon.sh`.
-- [ ] Acesso remoto via Tailscale (VPN) 100% homologado em smartphones/dispositivos remotos com `trusted_domains` e `trusted_proxies` persistidos no `config.php` via `occ`.
+- [x] Permissões e rotinas de automação atualizadas no `homelab-daemon.sh` (com auto-reinjeção de volumes pós-updates).
+- [x] Acesso remoto via Tailscale (VPN) 100% homologado em smartphones/dispositivos remotos com `trusted_domains` e `trusted_proxies` persistidos no `config.php` via `occ`.
+- [x] Rotina de recuperação e reset de senhas homologada via CLI (`occ user:resetpassword`).
 
 ### 4. Immich (`http://fotos.pk.local` ou porta `:2283`)
 - [ ] Testar primeiro login no Immich.

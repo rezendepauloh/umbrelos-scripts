@@ -443,8 +443,20 @@ O Nextcloud oficial do Umbrel foi totalmente homologado e integrado aos **HDs ex
    - Usuário Pessoal Paulo: `paulo` | Senha: `Paulo#Homelab2026` *(trocável no perfil)*.
    - Usuário Pessoal Kamila: `kamila` | Senha: `Kamila#Homelab2026` *(trocável no perfil)*.
 
+   > 💡 **Como Recuperar ou Redefinir Senhas de Usuários via Linha de Comando (`occ`):**
+   > Se esquecer a senha ou tiver problemas de autenticação, você pode redefini-la diretamente no SSH (`umbrel@192.168.0.8`):
+   > ```bash
+   > NC_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -E 'nextcloud.*(app|web|server)' | head -n 1)
+   >
+   > # 1. Listar usuários cadastrados no sistema
+   > sudo docker exec -u www-data "$NC_CONTAINER" php occ user:list
+   >
+   > # 2. Redefinir a senha interativamente (mínimo de 10 caracteres)
+   > sudo docker exec -it -u www-data "$NC_CONTAINER" php occ user:resetpassword <nome_usuario>
+   > ```
+
 2. **Arquitetura de Armazenamento Unificada (Nextcloud ↔ Samba ↔ HDs Externos):**
-   - O core do Nextcloud roda rápido no SSD NVMe, mas **todos os arquivos pessoais e compartilhados gravam diretamente nos HDs externos físicos (`disk1`)** via aplicativo oficial *External Storage Support* (`files_external`):
+   - O core do Nextcloud roda rápido no SSD NVMe, mas **todos os arquivos pessoais e compartilhados gravam diretamente nos HDs externos físicos (`disk2`)** via aplicativo oficial *External Storage Support* (`files_external`):
      - **`Meus Arquivos` (Paulo):** Aponta para `/storage/users/paulo` (exatamente o compartilhamento Samba `smb://192.168.0.8/Paulo`). Visível exclusivamente para o Paulo.
      - **`Meus Arquivos` (Kamila):** Aponta para `/storage/users/kamila` (compartilhamento Samba `smb://192.168.0.8/Kamila`). Visível exclusivamente para a Kamila.
      - **`Compartilhado`:** Aponta para `/storage/shared` (compartilhamento Samba `smb://192.168.0.8/Compartilhado`). Visível e editável por ambos!

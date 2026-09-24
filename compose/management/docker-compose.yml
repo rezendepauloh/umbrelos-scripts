@@ -56,8 +56,8 @@ services:
       - TZ=${TIMEZONE:-America/Sao_Paulo}
     volumes:
       - ./data/syncthing/config:/config
-      - ${NEXTCLOUD_DATA_DIR:-/mnt/storage/nextcloud/data}:/data/nextcloud
-      - ${STORAGE_BASE_DIR:-/mnt/storage}/users:/data/users
+      - ${DISK2_MOUNT:-/home/umbrel/umbrel/external/disk2}/users:/data/users
+      - ${DISK2_MOUNT:-/home/umbrel/umbrel/external/disk2}/shared:/data/shared
     ports:
       - "${SYNCTHING_WEB_PORT:-8384}:8384"
       - "${SYNCTHING_TRANSFER_PORT:-22000}:22000/tcp"

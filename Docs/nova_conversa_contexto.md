@@ -70,54 +70,49 @@ Os discos são conectados via USB 3.0 e montados de forma nativa e direta pelo u
    - Removido todo e qualquer dado *hardcoded* dos scripts (`03_samba_setup.sh`, `homelab-daemon.sh`, `02_storage_setup.sh`, `06_backup_popos.sh`). O sistema consome dinamicamente as variáveis de `/data/config.env` ou `config.env`.
    - Links da documentação corrigidos para caminhos relativos em Markdown.
 
----
-
-## 4. Foco Prioritário da Nova Conversa: Nextcloud via Tailscale & Gestão de Stacks 🎯
-
-### 🎯 Prioridade 1: Correção do Erro de "Domínio Não Confiável" no Nextcloud via Tailscale (CONCLUÍDO / HOMOLOGADO ✅)
-- **Status:** **Resolvido e Homologado!** 🎉
-- **Solução Aplicada:** Os domínios confiáveis (`trusted_domains`) e redes autorizadas (`trusted_proxies`) foram configurados de forma segura e persistente através do binário nativo `occ` do Nextcloud (`sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:set ...`).
-- **Validação:** Acesso testado com sucesso via smartphone conectado ao Tailscale, sem qualquer erro de domínio não confiável. O procedimento canônico e sanitizado está documentado em [Docs/pos_instalacao_portas_e_testes.md](pos_instalacao_portas_e_testes.md).
-
-### 🎯 Prioridade 2: Dockge (`http://umbrel.local:5001` ou `http://dockge.pk.local`) & Dozzle (CONCLUÍDO / HOMOLOGADO ✅)
-- **Status:** **Resolvido e Homologado!** 🎉
-- Stacks customizadas (`management`, `arr-stack`, `betor`) 100% integradas e operacionais no Dockge.
-- **Dozzle** (`http://umbrel.local:8888`) homologado para inspeção contínua de logs, busca e estatísticas de uso em tempo real de todos os containers do sistema.
-
-### Prioridade 3: Deploy de Projetos Docker Pessoais
-- Estruturar fluxo para hospedar projetos próprios (Python/Streamlit, Node.js) integrados ao Nginx Proxy Manager.
-
-### 📁 Arquivos Críticos de Orquestração no Servidor:
-1. **Hook de Boot do Rugix OS:** `/home/umbrel/umbrel/custom-hooks/pre-start`
-   - Executado automaticamente pelo `umbrel-custom-pre-start.service`.
-   - Restaura usuários (`paulo`, `kamila`), copia o `passdb.tdb` do Samba e dispara o daemon:
-     ```bash
-     systemd-run --unit=homelab-daemon /data/bin/homelab-daemon.sh
-     ```
-2. **Daemon Assíncrono do Homelab:** `/data/bin/homelab-daemon.sh` (versionado em `scripts/homelab-daemon.sh`)
-   - Carrega `/data/config.env` dinamicamente.
-   - Aguarda montagem dos discos (`disk1`, `disk2`, `disk3`).
-   - Aplica bind mount de mídia para o Jellyfin (`/media -> Downloads/media`).
-   - Restaura `/data/samba/smb.conf` e reinicia o Samba com blindagem pós-boot.
-   - Sobe as stacks customizadas (`management`, `arr-stack`, `betor`) e o cronjob do BeTor.
+8. **Nextcloud 100% Homologado & Multiplataforma:** ☁️
+   - Volumes mapeados com persistência no `disk2` (`/storage/users`, `/storage/shared`).
+   - Acesso móvel e desktop via Tailscale (`trusted_domains` e `trusted_proxies`) 100% operacional.
+   - Rotina de auto-injeção de volumes implementada no daemon para resistir a updates da loja do Umbrel.
+   - Procedimento de reset/recuperação de senhas homologado via CLI (`occ user:resetpassword`).
+9. **Dockge & Dozzle 100% Operacionais:** 📊
+   - Dockge (`:5001`) gerenciando perfeitamente as stacks `management`, `arr-stack` e `betor`.
+   - Dozzle (`:8888`) homologado para visualização em tempo real de logs e métricas de consumo de memória/CPU de todos os containers do sistema.
 
 ---
 
-## 5. Roteiro de Comandos para Diagnóstico Imediato
+## 4. Foco Prioritário da Nova Conversa: Syncthing (P2P Contínuo Pop!_OS ↔ Nextcloud) 🎯
+
+### 🚨 Prioridade 1: Pareamento e Sincronização P2P Contínua no Syncthing
+- **Objetivo:** Estabelecer a sincronização bidirecional de documentos e projetos entre o Pop!_OS (Desktop) e o mini PC (umbrelOS), integrando as pastas de forma que os arquivos sincronizados reflitam diretamente no Nextcloud e no Samba (`disk2/users/paulo`).
+- **Arquitetura Homologada:**
+  - O container **Syncthing** roda na stack `management` (`http://umbrel.local:8384` ou `:8384`).
+  - Volumes ajustados para a topologia nativa:
+    - `/data/users -> /home/umbrel/umbrel/external/disk2/users`
+    - `/data/shared -> /home/umbrel/umbrel/external/disk2/shared`
+- **Plano de Execução:**
+  1. Acessar a Web UI do Syncthing no mini PC (`http://192.168.0.8:8384`).
+  2. Configurar autenticação de administrador no painel web.
+  3. Parear o Syncthing do Pop!_OS (`localhost:8384`) com o do mini PC trocando os IDs de dispositivo.
+  4. Configurar as pastas de sincronização apontando para a pasta pessoal (`/data/users/paulo`) e compartilhada (`/data/shared`).
+  5. Testar envio de arquivos e validar reflexo no Nextcloud e compartilhamento Samba.
+
+### Prioridade 2: Deploy de Projetos Docker Pessoais
+- Estruturar fluxo para hospedar projetos próprios (Python/Streamlit, Node.js) no Dockge e integrados ao Nginx Proxy Manager.
+
+---
+
+## 5. Roteiro de Comandos para Diagnóstico Imediato (Syncthing)
 
 Ao iniciar a nova conversa, execute no terminal SSH (`umbrel@umbrel.local`):
 
 ```bash
-# 1. Verificar containers do Nextcloud ativos
-sudo docker ps --filter "name=nextcloud" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+# 1. Conferir status do container do Syncthing na stack management
+sudo docker ps --filter "name=syncthing" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-# 2. Localizar o config.php do Nextcloud no host
-sudo find /home/umbrel/umbrel/app-data/nextcloud -name "config.php" 2>/dev/null
+# 2. Verificar os volumes montados no container do Syncthing
+sudo docker inspect syncthing --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' 2>/dev/null
 
-# 3. Conferir o IP atual do Tailscale no servidor
-tailscale ip -4 2>/dev/null || ip addr show tailscale0 2>/dev/null | grep -w inet
-
-# 4. Inspecionar os trusted_domains atualmente configurados no Nextcloud
-NC_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -E 'nextcloud.*(app|web|server)' | head -n 1)
-sudo docker exec -u www-data "$NC_CONTAINER" php occ config:system:get trusted_domains
+# 3. Conferir se a porta 8384 está escutando no host
+sudo ss -tulpn | grep 8384
 ```
