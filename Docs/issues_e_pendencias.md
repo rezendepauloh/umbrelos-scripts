@@ -93,9 +93,10 @@ Precisamos rodar testes práticos de ponta a ponta e validar as configurações 
 ### 6. IT-Tools (`http://it.pk.local` ou porta `:8080`)
 - [ ] Validar carregamento das ferramentas de desenvolvedor (gerador de hash, JSON formatter, Docker Run to Compose converter, etc.).
 
-### 7. Rede, Fixação de IP Estático e Resolução Local NPM / AdGuard (`*.pk.local`)
-- [ ] **Persistência do IP Estático `192.168.0.8`:** Investigar e garantir que a interface física `enp1s0` assuma e mantenha exclusivamente o IP `192.168.0.8` em todo reboot sem interferência do DHCP dinâmico da Claro (que atribuiu temporariamente `192.168.0.2`).
-- [ ] **Resolução DNS de Domínios Amigáveis (`*.pk.local`):** Verificar a propagação e escuta do AdGuard Home (`192.168.0.8:53`) e o roteamento do Nginx Proxy Manager (porta 80 -> 8088), diagnosticando por que clientes como o Pop!_OS e Smart TVs falham na resolução de nomes como `http://jellyfin.pk.local` mesmo respondendo por IP direto.
+### 7. Rede, Fixação de IP Estático e Resolução Local NPM / AdGuard (`*.pk.local`) (CONCLUÍDO / HOMOLOGADO ✅)
+- [x] **Persistência do IP Estático `192.168.0.8`:** Corrigido e homologado via NetworkManager (`nmcli connection modify 'Wired connection 1' ipv4.addresses 192.168.0.8/24 ipv4.gateway 192.168.0.1 ipv4.dns '127.0.0.1 1.1.1.1' ipv4.method manual`) e persistido no `homelab-daemon.sh` e `/data/config.env`. O mini PC agora assume `192.168.0.8` autonomamente sem depender de atribuição DHCP após quedas de energia.
+- [x] **Limitação Crítica do Roteador Claro (Sagemcom):** O roteador padrão da Claro (`192.168.0.1`) bloqueia completamente o acesso à sua interface administrativa web via HTTP/HTTPS na porta 80/443. Como não é possível configurar reservas DHCP nem alterar DNS diretamente no firmware da Claro, **todas as amarrações de IP fixo, DNS e roteamento são gerenciadas externamente** pelo NetworkManager do mini PC, AdGuard Home (`192.168.0.8:53 / :8095`) e Nginx Proxy Manager.
+- [x] **Auto-Start de Aplicações Customizadas (Dockge / Homelab):** As stacks `karteman`, `verifica-nomes-diarios-oficiais` e `paulo-investimentos-pessoais` foram integradas no `homelab-daemon.sh`, garantindo que todas as aplicações pessoais subam sozinhas a frio pós-boot.
 - [ ] **Homologação Jellyfin em Smart TVs Samsung (Tizen):** Validar acesso no aplicativo oficial da Samsung TV e no Projetor The Freestyle via `http://192.168.0.8:8096` ou proxy reverso.
 
 ### 8. Inspeção de Logs e Consoles dos Apps Nativos do Umbrel no Dockge / Dozzle (CONCLUÍDO / HOMOLOGADO ✅)

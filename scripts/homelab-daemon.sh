@@ -35,11 +35,12 @@ if [ "${SET_STATIC_IP:-false}" = "true" ] && [ -n "${STATIC_IP:-}" ]; then
     NET_IF="${NETWORK_INTERFACE:-enp1s0}"
     NET_CIDR="${STATIC_IP}/${STATIC_NETMASK:-24}"
     NET_GW="${STATIC_GATEWAY:-192.168.0.1}"
-    NET_DNS="${STATIC_DNS:-1.1.1.1 8.8.8.8}"
+    NET_DNS="${STATIC_DNS:-127.0.0.1 1.1.1.1}"
     
     if command -v nmcli >/dev/null 2>&1; then
         CON_NAME=$(nmcli -t -f NAME,TYPE connection show 2>/dev/null | grep "ethernet" | head -n1 | cut -d: -f1 || echo "Wired connection 1")
         nmcli connection modify "$CON_NAME" ipv4.addresses "$NET_CIDR" ipv4.gateway "$NET_GW" ipv4.dns "$NET_DNS" ipv4.method manual 2>/dev/null || true
+        nmcli connection up "$CON_NAME" 2>/dev/null || true
     fi
     ip addr show "$NET_IF" 2>/dev/null | grep -q "$STATIC_IP" || ip addr add "$NET_CIDR" dev "$NET_IF" 2>/dev/null || true
 fi
@@ -163,6 +164,15 @@ for j in {1..60}; do
         fi
         if [ -d "/home/umbrel/umbrelos-scripts/compose/betor" ]; then
             cd /home/umbrel/umbrelos-scripts/compose/betor && docker compose --env-file /home/umbrel/umbrelos-scripts/.env up -d || true
+        fi
+        if [ -d "/home/umbrel/umbrelos-scripts/compose/karteman" ]; then
+            cd /home/umbrel/umbrelos-scripts/compose/karteman && docker compose --env-file /home/umbrel/umbrelos-scripts/compose/karteman/.env up -d || true
+        fi
+        if [ -d "/home/umbrel/umbrelos-scripts/compose/verifica-nomes-diarios-oficiais" ]; then
+            cd /home/umbrel/umbrelos-scripts/compose/verifica-nomes-diarios-oficiais && docker compose --env-file /home/umbrel/umbrelos-scripts/compose/verifica-nomes-diarios-oficiais/.env up -d || true
+        fi
+        if [ -d "/home/umbrel/umbrelos-scripts/compose/paulo-investimentos-pessoais" ]; then
+            cd /home/umbrel/umbrelos-scripts/compose/paulo-investimentos-pessoais && docker compose --env-file /home/umbrel/umbrelos-scripts/compose/paulo-investimentos-pessoais/.env up -d || true
         fi
         echo "Stacks customizadas iniciadas com sucesso!"
 

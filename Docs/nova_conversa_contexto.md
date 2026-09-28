@@ -16,7 +16,8 @@
 - **Equipamento:** Mini PC Blackview MP100 Pro (Intel Core i5-12450H 12ª Ger, 16GB RAM DDR4, 1TB NVMe interno).
 - **Sistema Operacional:** **umbrelOS 1.x** (Debian GNU/Linux 13 trixie / Debian snapshot, sistema com raiz imutável via Rugix OS).
 - **Rede Local:**
-  - **IP Fixo do mini PC:** `192.168.0.8` (Interface `enp1s0`).
+  - **IP Fixo do mini PC:** `192.168.0.8` (Interface `enp1s0` fixada via NetworkManager no próprio mini PC).
+  - **Limitação de Roteador (Claro Sagemcom `192.168.0.1`):** A operadora Claro bloqueia acesso administrativo HTTP/HTTPS ao roteador (`192.168.0.1`), impedindo reservas DHCP e configurações diretas de DNS no aparelho. Toda a gestão de IP fixo e DNS é garantida diretamente no mini PC e no AdGuard Home.
   - **IP do Desktop Pop!_OS:** `192.168.0.16` (Usuário: `rezendepauloh`).
   - **DNS Local Centralizado:** AdGuard Home (`http://192.168.0.8:8095`), wildcard `*.pk.local -> 192.168.0.8`.
   - **Nginx Proxy Manager:** `http://192.168.0.8:81` (Porta HTTP 8088 / HTTPS 8443).
