@@ -57,6 +57,31 @@ Este documento centraliza todas as pendências identificadas, pontos de atençã
 
 ---
 
+## 🚨 Issue 5 (Pendente / Investigação): Desvio no Ponto de Montagem dos HDs Externos Pós-Queda de Energia (`disk1 (2)` e `disk2 (2)`)
+
+### 📌 Diagnóstico Preliminar:
+- **Sintoma:** Após a queda de energia, o qBittorrent acusou *"Arquivos ausentes"* em todos os downloads ativos e o Nextcloud exibiu pastas externas desconectadas/zeradas.
+- **Causa Raiz Identificada:**
+  - O daemon oficial do umbrelOS (`umbreld` - módulo `external-storage.ts`) monta os discos USB em `/home/umbrel/umbrel/external/<label>`.
+  - Quando o sistema sofreu um desligamento abrupto (dirty shutdown por queda de luz), as pastas `/home/umbrel/umbrel/external/disk1` e `disk2` não foram desmontadas de forma limpa e permaneceram no sistema de arquivos como diretórios órfãos não vazios.
+  - Ao subir novamente, a função `getUniqueName()` do `umbreld` detectou que as pastas `disk1` e `disk2` já existiam e montou os HDs físicos automaticamente em pastas com sufixo:
+    - `/home/umbrel/umbrel/external/disk1 (2)`
+    - `/home/umbrel/umbrel/external/disk2 (2)`
+  - Como os containers (qBittorrent, Jellyfin, Radarr, Nextcloud, Samba) apontam para os caminhos canônicos `/home/umbrel/umbrel/external/disk1` e `.../disk2`, eles passaram a enxergar as pastas fantasmas vazias locais, fazendo parecer que os HDs não tinham subido ou que os dados haviam sumido.
+
+### 🎯 Plano de Solução para a Próxima Intervenção:
+1. **Limpeza das Montagens Duplicadas:**
+   - Desmontar `disk1 (2)` e `disk2 (2)`.
+   - Remover as pastas órfãs residuais `/home/umbrel/umbrel/external/disk1` e `/home/umbrel/umbrel/external/disk2`.
+   - Remontar os HDs físicos diretamente nas pastas corretas `disk1` e `disk2` (pelos UUIDs ou labels).
+2. **Blindagem no `homelab-daemon.sh` (Prevenção Definitiva):**
+   - No início do boot do `homelab-daemon.sh`, antes de qualquer container subir, implementar uma rotina que:
+     1. Verifica se existem diretórios ou montagens com sufixo `(2)` em `/home/umbrel/umbrel/external/`.
+     2. Se o caminho canônico `disk1` ou `disk2` não for um `mountpoint`, faz `umount -l` em qualquer montagem duplicada e garante a montagem canônica exclusiva por UUID (`fc0b5d7b-...` e `490440f1-...`).
+     3. Reinicia o qBittorrent e força a rechecagem rápida de integridade para voltar a semear/baixar normalmente.
+
+---
+
 ## 🧪 Issue 2: Bateria de Testes e Validação dos Demais Serviços
 
 Precisamos rodar testes práticos de ponta a ponta e validar as configurações dos seguintes serviços instalados:
