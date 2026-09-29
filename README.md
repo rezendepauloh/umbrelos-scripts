@@ -28,7 +28,8 @@
    - [Acesso Remoto Seguro (Tailscale) e Bloqueio de Anúncios (AdGuard Home)](#acesso-remoto-seguro-tailscale-e-bloqueio-de-anúncios-adguard-home)
 5. [Gerenciamento e Monitoramento (Dockge, Uptime Kuma, IT-Tools)](#-gerenciamento-e-monitoramento)
 6. [Blindagem Contra Falhas de Energia (Crash-Resilience Sem Nobreak)](#-blindagem-contra-falhas-de-energia)
-7. [Tabela de Portas e Serviços](#-tabela-de-portas-e-serviços)
+7. [🧪 Suíte Unificada de Testes e Integridade](#-suíte-unificada-de-testes-e-integridade)
+8. [Tabela de Portas e Serviços](#-tabela-de-portas-e-serviços)
 
 ---
 
@@ -433,6 +434,31 @@ Como o Homelab ainda não possui um nobreak dedicado, o sistema foi blindado via
 4. **Rotina Automática de Backup de Bancos (`scripts/06_backup_databases.sh`)**:
    - Todo dia às **04:00 da manhã**, o script gera um dump comprimido `.sql.gz` do **PostgreSQL do Immich** e do banco do **Nextcloud** em `/mnt/storage/backups/databases/`.
    - Se uma queda severa corromper qualquer banco, você restaura o estado da noite anterior em menos de 2 minutos.
+
+---
+
+## 🧪 Suíte Unificada de Testes e Integridade
+
+O projeto conta com uma suíte completa de testes de integração e saúde em **Bash Nativo** (inspirada na arquitetura visual do *Sistema Karteman*), permitindo auditar o homelab tanto a partir do seu desktop pessoal quanto diretamente do mini PC.
+
+> 📖 **Documentação Completa da Suíte**: Veja detalhes técnicos e opções de execução em [Docs/suite_de_testes_e_integridade.md](Docs/suite_de_testes_e_integridade.md).
+
+### Como Executar os Testes:
+
+```bash
+# 1. Executar a partir do seu computador pessoal (Pop!_OS via SSH):
+cd ~/Documentos/DevProjects/Bash/umbrelos-scripts
+./tests/run_all.sh
+
+# 2. Executar diretamente no terminal do mini PC (SSH):
+ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "/home/umbrel/umbrelos-scripts/tests/run_all.sh"
+
+# 3. Executar apenas módulos específicos:
+./tests/run_all.sh storage   # Apenas discos externos e UUIDs
+./tests/run_all.sh samba     # Apenas serviços e shares Samba
+./tests/run_all.sh docker    # Apenas containers Docker e homelab_network
+./tests/run_all.sh http      # Apenas disponibilidade dos endpoints web
+```
 
 ---
 
