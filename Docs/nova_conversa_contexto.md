@@ -78,42 +78,60 @@ Os discos são conectados via USB 3.0 e montados de forma nativa e direta pelo u
    - Procedimento de reset/recuperação de senhas homologado via CLI (`occ user:resetpassword`).
 9. **Dockge & Dozzle 100% Operacionais:** 📊
    - Dockge (`:5001`) gerenciando perfeitamente as stacks `management`, `arr-stack` e `betor`.
-   - Dozzle (`:8888`) homologado para visualização em tempo real de logs e métricas de consumo de memória/CPU de todos os containers do sistema.
+   - Dozzle (`:8888`) homologado para streaming em tempo real de logs e métricas de consumo de memória/CPU de todos os containers.
+10. **Blindagem Contra Quedas de Energia & Suíte de Testes Automatizada:** 🛡️
+   - O homelab foi blindado e testado com reinicialização real a frio: os 3 HDs externos sobem por UUID em 1s sem pastas duplicadas `*(2)`.
+   - Samba protegido com atributo imutável (`chattr +i`) contra sobrescrita do `umbreld`.
+   - Suíte de testes automatizada em Bash desenvolvida em `tests/run_all.sh` com 56 asserções cobrindo discos, rede, Samba, Docker e portas HTTP.
 
 ---
 
-## 4. Foco Prioritário da Nova Conversa: Syncthing (P2P Contínuo Pop!_OS ↔ Nextcloud) 🎯
+## 4. Foco Prioritário da Nova Conversa: Syncthing Multiplataforma (Pop!_OS + Windows 11 ↔ Nextcloud / Samba) 🎯
 
-### 🚨 Prioridade 1: Pareamento e Sincronização P2P Contínua no Syncthing
-- **Objetivo:** Estabelecer a sincronização bidirecional de documentos e projetos entre o Pop!_OS (Desktop) e o mini PC (umbrelOS), integrando as pastas de forma que os arquivos sincronizados reflitam diretamente no Nextcloud e no Samba (`disk2/users/paulo`).
-- **Arquitetura Homologada:**
-  - O container **Syncthing** roda na stack `management` (`http://umbrel.local:8384` ou `:8384`).
-  - Volumes ajustados para a topologia nativa:
+### 🚨 Prioridade 1: Pareamento e Sincronização P2P Contínua Multi-Dispositivo
+- **Objetivo:** Estabelecer a sincronização bidirecional em tempo real de documentos, projetos e arquivos de trabalho entre:
+  1. **Desktop Pop!_OS (Paulo):** Sincronização de pastas de desenvolvimento e arquivos pessoais para `/data/users/paulo` e `/data/shared`.
+  2. **Laptop Windows 11 (Kamila):** Sincronização contínua de pastas pessoais/trabalho da Kamila para `/data/users/kamila` e `/data/shared`.
+  3. **Mini PC umbrelOS:** Central de dados no `disk2` nativo, refletindo automaticamente no **Nextcloud** ("Meus Arquivos" / "Compartilhado") e nos compartilhamentos **Samba** (`smb://192.168.0.8/Paulo`, `Kamila`, `Compartilhado`).
+
+- **Arquitetura Homologada do Syncthing:**
+  - O container **Syncthing** roda na stack `management` (`http://192.168.0.8:8384` ou `http://umbrel.local:8384`).
+  - Mapeamentos de volumes já ativos e testados no `disk2`:
     - `/data/users -> /home/umbrel/umbrel/external/disk2/users`
-    - `/data/shared -> /home/umbrel/umbrel/external/disk2/shared`
-- **Plano de Execução:**
-  1. Acessar a Web UI do Syncthing no mini PC (`http://192.168.0.8:8384`).
-  2. Configurar autenticação de administrador no painel web.
-  3. Parear o Syncthing do Pop!_OS (`localhost:8384`) com o do mini PC trocando os IDs de dispositivo.
-  4. Configurar as pastas de sincronização apontando para a pasta pessoal (`/data/users/paulo`) e compartilhada (`/data/shared`).
-  5. Testar envio de arquivos e validar reflexo no Nextcloud e compartilhamento Samba.
+      - `.../users/paulo` (Pasta pessoal Paulo)
+      - `.../users/kamila` (Pasta pessoal Kamila)
+    - `/data/shared -> /home/umbrel/umbrel/external/disk2/shared` (Compartilhado casal)
 
-### Prioridade 2: Deploy de Projetos Docker Pessoais
-- Estruturar fluxo para hospedar projetos próprios (Python/Streamlit, Node.js) no Dockge e integrados ao Nginx Proxy Manager.
+- **Plano de Execução Imediato:**
+  1. **Configuração da Central Syncthing no Mini PC:**
+     - Acessar `http://192.168.0.8:8384` e definir senha mestra do Web GUI.
+     - Obter a identificação do dispositivo (Device ID) do Homelab.
+  2. **Pareamento com o Pop!_OS (Desktop Paulo):**
+     - Instalar/validar cliente Syncthing local (`sudo apt install syncthing` ou Syncthing GTK / Web UI `localhost:8384`).
+     - Parear com o mini PC via Device ID e vincular pastas (`Documentos/Projetos` -> `/data/users/paulo` e `Compartilhado` -> `/data/shared`).
+  3. **Pareamento com o Laptop Windows 11 (Kamila):**
+     - Instalar o cliente oficial recomendado para Windows: **SyncTrayzor** (GUI nativa com bandeja do sistema e auto-start) ou Syncthing Windows.
+     - Parear com o mini PC via Device ID.
+     - Configurar sincronização das pastas da Kamila apontando para `/data/users/kamila` e a pasta comum para `/data/shared`.
+  4. **Validação de Permissões e Reflexo no Nextcloud / Samba:**
+     - Testar envio de arquivos a partir do Pop!_OS e do Windows 11.
+     - Validar permissões UNIX (`chown -R umbrel:umbrel`, `chmod 775/777`) para que os arquivos fiquem imediatamente acessíveis no Nextcloud e no Samba.
+     - Executar rescan do Nextcloud via `occ files:scan --all` se necessário para indexação imediata na Web UI do Nextcloud.
 
 ---
 
-## 5. Roteiro de Comandos para Diagnóstico Imediato (Syncthing)
+## 5. Roteiro de Comandos para Diagnóstico Imediato
 
-Ao iniciar a nova conversa, execute no terminal SSH (`umbrel@umbrel.local`):
+Ao iniciar a nova conversa, execute no terminal do seu Pop!_OS:
 
 ```bash
-# 1. Conferir status do container do Syncthing na stack management
-sudo docker ps --filter "name=syncthing" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+# 1. Rodar a suíte de testes de integridade para confirmar 100% de saúde do Homelab
+cd ~/Documentos/DevProjects/Bash/umbrelos-scripts
+./tests/run_all.sh
 
-# 2. Verificar os volumes montados no container do Syncthing
-sudo docker inspect syncthing --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' 2>/dev/null
+# 2. Conferir status do Syncthing e portas de sincronização no mini PC
+ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "sudo docker ps --filter 'name=syncthing' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 
-# 3. Conferir se a porta 8384 está escutando no host
-sudo ss -tulpn | grep 8384
+# 3. Verificar permissões das pastas de usuários e compartilhada no disk2
+ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "ls -la /home/umbrel/umbrel/external/disk2/users /home/umbrel/umbrel/external/disk2/shared"
 ```
