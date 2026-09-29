@@ -199,13 +199,25 @@ for j in {1..60}; do
         echo "Stacks customizadas iniciadas com sucesso!"
 
         # 6. Blindagem final do Samba pós-estabilização do Umbrel
-        # O umbrelOS às vezes sobrescreve o smb.conf e desativa o smbd durante o boot dos seus containers.
+        # O umbreld inicializa seu módulo de arquivos e, por não ter shares no dashboard do Umbrel,
+        # envia um "systemctl stop smbd" e sobrescreve /etc/samba/smb.conf cerca de 10s após os apps subirem.
+        echo "Aguardando estabilização final do ciclo de boot do Umbrel para blindar o Samba..."
+        for s in {1..20}; do
+            if docker ps --format '{{.Names}}' | grep -q "nextcloud_web_1"; then
+                sleep 5
+                break
+            fi
+            sleep 1
+        done
+
         if [ -f "/data/samba/smb.conf" ]; then
-            echo "Aplicando blindagem final do Samba..."
+            echo "Aplicando blindagem definitiva do Samba..."
+            chattr -i /etc/samba/smb.conf 2>/dev/null || true
             cp /data/samba/smb.conf /etc/samba/smb.conf
-            systemctl enable smbd nmbd 2>/dev/null || true
-            systemctl restart smbd nmbd || true
-            echo "Samba validado e ativo pós-boot: $(systemctl is-active smbd)"
+            chattr +i /etc/samba/smb.conf 2>/dev/null || true
+            systemctl enable smbd nmbd wsdd2 2>/dev/null || true
+            systemctl restart smbd nmbd wsdd2 || true
+            echo "Samba validado e ativo pós-boot: smbd=$(systemctl is-active smbd), wsdd2=$(systemctl is-active wsdd2)"
         fi
 
         # 7. Garantir agendamento do Cronjob do BeTor (sobrevive a reboots)
