@@ -49,12 +49,34 @@ DISK1="${DISK1_MOUNT:-/home/umbrel/umbrel/external/disk1}"
 DISK2="${DISK2_MOUNT:-/home/umbrel/umbrel/external/disk2}"
 DISK3="${DISK3_MOUNT:-/home/umbrel/umbrel/external/disk3}"
 
-# 1. Esperar os discos USB externos montarem pelo Label ou montar manualmente
+# 1. Resolver preventivamente anomalias de duplicação do umbreld ('disk1 (2)') e montar por UUID
+UUID_DISK1="${DISK1_UUID:-fc0b5d7b-1706-4461-9e1e-9d3f61e7bab0}"
+UUID_DISK2="${DISK2_UUID:-490440f1-8f2e-41fd-bc27-00632adec790}"
+UUID_DISK3="${DISK3_UUID:-e106affb-35da-4e93-a92d-e1ef5df32bb5}"
+
+# Desmonta pontos duplicados com '(2)' criados por falha de queda de energia
+for dup in /home/umbrel/umbrel/external/*\ \(2\); do
+    if [ -d "$dup" ]; then
+        echo "Detectado ponto duplicado órfão do umbreld: $dup. Desmontando..."
+        umount -l "$dup" 2>/dev/null || true
+        rmdir "$dup" 2>/dev/null || true
+    fi
+done
+
 for i in {1..30}; do
-    # Garante montagem correta pelos labels
-    mountpoint -q "$DISK1" || mount -L disk1 "$DISK1" 2>/dev/null || true
-    mountpoint -q "$DISK2" || mount -L disk2 "$DISK2" 2>/dev/null || true
-    mountpoint -q "$DISK3" || mount -L disk3 "$DISK3" 2>/dev/null || true
+    # Se os diretórios não estiverem montados, garantir diretório e montar por UUID ou Label
+    if ! mountpoint -q "$DISK1"; then
+        mkdir -p "$DISK1"
+        mount UUID="$UUID_DISK1" "$DISK1" 2>/dev/null || mount -L disk1 "$DISK1" 2>/dev/null || true
+    fi
+    if ! mountpoint -q "$DISK2"; then
+        mkdir -p "$DISK2"
+        mount UUID="$UUID_DISK2" "$DISK2" 2>/dev/null || mount -L disk2 "$DISK2" 2>/dev/null || true
+    fi
+    if ! mountpoint -q "$DISK3"; then
+        mkdir -p "$DISK3"
+        mount UUID="$UUID_DISK3" "$DISK3" 2>/dev/null || mount -L disk3 "$DISK3" 2>/dev/null || true
+    fi
 
     if mountpoint -q "$DISK1" && mountpoint -q "$DISK2"; then
         echo "Discos externos disk1 e disk2 detectados e montados após ${i}s"
