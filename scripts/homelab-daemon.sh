@@ -176,6 +176,10 @@ for j in {1..60}; do
             echo "Reiniciando container do Nextcloud..."
             docker restart nextcloud_web_1 nextcloud_cron_1 || true
         fi
+        if ! docker ps --format '{{.Names}}' | grep -q "home-assistant_server_1"; then
+            echo "Garantindo que o Home Assistant esteja rodando..."
+            docker start home-assistant_server_1 || true
+        fi
 
         echo "Subindo stacks customizadas..."
         if [ -d "/home/umbrel/umbrelos-scripts/compose/management" ]; then

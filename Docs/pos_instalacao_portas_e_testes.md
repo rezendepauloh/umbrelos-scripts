@@ -27,6 +27,7 @@ Este guia reúne todas as portas, credenciais e **a ordem lógica recomendada** 
 | **Bazarr (Legendas)** | `http://umbrel.local:6767` | *Sem senha inicial* | *Sem senha inicial* | Conectar com Radarr/Sonarr e OpenSubtitles |
 | **FlareSolverr** | `http://umbrel.local:8191` | *Sem interface* | *Serviço de Proxy* | Usado internamente pelo Prowlarr para bypass Cloudflare |
 | **BeTor (API Nacional)** | `http://umbrel.local:8005` | *Sem interface* | *Buscador Nacional* | Stack sob demanda no Dockge para Comando Torrents e Bludv |
+| **Home Assistant** | `http://home.pk.local` (`:8123`) | Criado no onboarding | Criada no onboarding | Automação residencial, Xiaomi, ICSee, Rojeco e Alexa |
 
 ---
 
@@ -540,39 +541,102 @@ O Nextcloud oficial do Umbrel foi totalmente homologado e integrado aos **HDs ex
      4. Autorize no navegador web com seu usuário e senha.
      5. O Nextcloud criará uma pasta no seu Windows Explorer (com suporte a arquivos sob demanda / Virtual Files), permitindo visualizar tudo sem baixar gigabytes desnecessários.
 
-#### 5.4. Syncthing (Sincronização P2P Contínua: Pop!_OS ↔ Mini PC / Nextcloud)
+#### 5.4. Sincronização de Arquivos: Nextcloud Desktop Client (Ativo) & Syncthing (Standby Estratégico)
 
-O **Syncthing** roda na stack `management` e permite sincronizar pastas do seu notebook/desktop com o mini PC de forma automática, bidirecional e instantânea:
+1. **Motor de Sincronização Ativo (Nextcloud Desktop Client):**
+   - O aplicativo **Nextcloud Desktop Client** (instalado via Flatpak no Pop!_OS e cliente oficial no Windows 11) é o motor oficial e exclusivo para sincronizar as pastas de documentos pessoais e compartilhados:
+     - `Meus Arquivos` ➡️ Sincronizado com `/home/umbrel/umbrel/external/disk2/users/<usuario>` e acessível via Samba (`\\192.168.0.8\<Usuario>`).
+     - `Compartilhado` ➡️ Sincronizado com `/home/umbrel/umbrel/external/disk2/shared` e acessível via Samba (`\\192.168.0.8\Compartilhado`).
+   - No Pop!_OS, o cliente já está configurado no autostart (`21_autostart_config.sh`) rodando com `--background`.
+   - **Regra de Ouro:** Não utilize outros programas de sincronização automática (como Syncthing) operando sobre a mesma pasta local do Nextcloud para evitar concorrência de *file locks* e duplicações.
 
-1. **Acesso Web e Segurança:**
-   - URL no Mini PC: `http://192.168.0.8:8384` (ou `http://syncthing.pk.local:8384`).
-   - No primeiro acesso, clique em **Ajustes (Settings)** ➡️ aba **GUI** e configure um usuário e senha de administrador para proteger a interface.
+2. **Syncthing (Operacional no Homelab / Standby nos Clientes):**
+   - O container **Syncthing** roda na stack `management` (`http://192.168.0.8:8384` ou `http://syncthing.pk.local:8384`) e está 100% funcional.
+   - O pacote e as regras de firewall (`22000/tcp`, `22000/udp`, `21027/udp`) já estão integrados nos scripts de automação do Pop!_OS (`04_pacotes_base_dev.sh` e `26_limpeza_otimizacao.sh`).
+   - Mantenha-o como uma ferramenta de reserva/standby para fluxos onde o Nextcloud não seja ideal (ex: sincronização P2P contínua de diretórios pesados de código-fonte, repositórios git locais ou pastas temporárias de alta taxa de escrita).
 
-2. **Como Parear o Mini PC com seu Pop!_OS:**
-   - No seu **Pop!_OS**, abra o Syncthing (se já tiver instalado) ou instale com:
+#### 5.5. Immich (Google Fotos Auto-Hospedado com IA, Reconhecimento Facial e Backup Mobile)
+
+O **Immich** é a alternativa definitiva e moderna ao Google Fotos / Apple Photos. Ele roda na porta `:2283` (`http://192.168.0.8:2283` ou `http://fotos.pk.local`):
+
+1. **Armazenamento Seguro das Fotos no HD Externo (`disk2/immich`):**
+   - Os arquivos de fotos originais, vídeos, miniaturas e backups são armazenados diretamente no disco dedicado:
+     `/home/umbrel/umbrel/external/disk2/immich`
+   - O volume é mantido persistente no `homelab-daemon.sh`, garantindo que atualizações da App Store do Umbrel não resetem o ponto de montagem.
+
+2. **Primeiro Acesso e Configuração de Administrador:**
+   - Acesse no navegador: `http://192.168.0.8:2283` (ou `http://fotos.pk.local`).
+   - Clique em **Getting Started** e crie a conta do Administrador principal (`Paulo`).
+   - No painel de administração (**Administration** ➡️ **User Management**):
+     - Crie o usuário para `Kamila` com e-mail e senha segura.
+     - *(Opcional)* Ative o **Partner Sharing** (Compartilhamento de Parceiro) para que você e a Kamila possam visualizar as fotos um do outro diretamente na linha do tempo principal ou em abas separadas.
+
+3. **Configuração nos Celulares (Android e iOS):**
+   - Baixe o aplicativo oficial **Immich** na [Google Play Store](https://play.google.com/store/apps/details?id=app.alextran.immich) ou na [App Store da Apple](https://apps.apple.com/app/immich/id1613945652).
+   - Ao abrir o app, insira a **Server Endpoint URL**:
+     - *No Wi-Fi de casa:* `http://fotos.pk.local:2283` (ou `http://192.168.0.8:2283`).
+     - *Fora de casa / 4G / 5G:* Conecte a VPN **Tailscale** no celular e use o IP Tailscale do mini PC (ex: `http://<IP_TAILSCALE>:2283`).
+   - Faça login com sua conta.
+   - Na aba **Backup**:
+     - Selecione os álbuns da câmera que deseja sincronizar (`DCIM/Camera`, `WhatsApp Images`, etc.).
+     - Ative o backup em segundo plano (*Background backup*).
+
+#### 5.6. Home Assistant (Automação Residencial & Casa Inteligente)
+
+O **Home Assistant** roda na porta `:8123` em modo de rede `host` (`http://192.168.0.8:8123` ou `http://home.pk.local` via Nginx Proxy Manager). O modo `host` permite a auto-descoberta transparente de dispositivos locais mDNS, SSDP, UPnP e ONVIF:
+
+1. **Primeiro Acesso e Conta de Administrador:**
+   - Acesse no navegador: `http://home.pk.local` (ou `http://192.168.0.8:8123`).
+   - Crie seu usuário e senha master de administrador.
+   - Confirme o fuso horário como **`America/Campo_Grande`** (UTC-4) e sistema métrico.
+
+2. **HACS (Home Assistant Community Store):**
+   - O HACS é a loja da comunidade que viabiliza integrações customizadas avançadas (como Xiaomi Miot e Alexa Media Player).
+   - **Instalação no container (executada no SSH do mini PC):**
      ```bash
-     sudo apt install syncthing
-     systemctl --user enable --now syncthing
+     sudo docker exec home-assistant_server_1 sh -c 'wget -O - https://get.hacs.xyz | bash -'
+     sudo docker restart home-assistant_server_1
      ```
-     *(Acesse a interface local do seu notebook em `http://localhost:8384`)*.
-   - **Obter o ID de Cada Dispositivo:**
-     - No Syncthing do mini PC (`http://192.168.0.8:8384`): clique em **Ações** ➡️ **Mostrar ID** e copie o código alfanumérico.
-     - No Syncthing do seu Pop!_OS (`http://localhost:8384`): clique em **Adicionar Dispositivo Remoto**, cole o ID do mini PC e salve.
-     - Uma notificação amarela de aprovação surgirá no mini PC: basta clicar em **Adicionar Dispositivo**!
+   - **Ativação na interface web:**
+     - Vá em **Configurações** ⚙️ ➡️ **Dispositivos e Serviços** ➡️ **+ Adicionar Integração**.
+     - Pesquise por **HACS**, marque os termos de aceite e insira o código de autenticação gerado no link `github.com/login/device`.
 
-3. **Mapeamento de Pastas (Para cair direto no Samba e Nextcloud):**
-   - No Syncthing do mini PC, o container tem acesso aos seguintes volumes:
-     - `/data/users/paulo` ➡️ Sua pasta pessoal nos HDs externos (`Meus Arquivos` no Nextcloud e `smb://192.168.0.8/Paulo`).
-     - `/data/users/kamila` ➡️ Pasta pessoal da Kamila.
-   - **Compartilhar uma pasta (ex: Documentos ou Projetos Dev do seu Pop!_OS):**
-     1. No Pop!_OS, adicione a pasta local (ex: `/home/rezendepauloh/Documentos`).
-     2. Na aba **Compartilhamento**, marque o dispositivo **`umbrel-syncthing`**.
-     3. No Syncthing do mini PC, aceite o compartilhamento e defina o **Caminho da Pasta** como:
-        `/data/users/paulo/Documentos`
-     4. *Resultado imediato:* Tudo que você salvar em `~/Documentos` no seu Pop!_OS sincroniza em background, cai no HD externo de 1TB, aparece no seu Samba e no seu Nextcloud!
+3. **Integração Robô Aspirador Xiaomi (Xiaomi Home):**
+   - No menu lateral **HACS** ➡️ **+ Explorar e baixar repositórios** ➡️ busque por **`Xiaomi Miot Auto`** e faça o download.
+   - Reinicie o Home Assistant.
+   - Em **Configurações ⚙️ ➡️ Dispositivos e Serviços ➡️ + Adicionar Integração**, selecione **Xiaomi Miot Auto**:
+     - Método de autenticação: **Log in with Xiaomi account**.
+     - Informe as credenciais da sua conta Xiaomi (e-mail/ID e senha) e o servidor (Brasil / `br` ou Outro).
+     - O robô aspirador é importado com mapa, sensores de desgaste de acessórios (escova, filtro), nível de bateria e controles completos de sucção e limpeza.
 
-#### 5.5. Immich (Fotos e Backup Mobile)
-- Instale o app oficial no celular (Android / iOS). Aponte para `http://umbrel.local:2283` (ou `fotos.pk.local`) e ative o backup automático de fotos da câmera.
+4. **Integração Câmeras ICSee (ONVIF / RTSP Local):**
+   - As câmeras compatíveis com o app **ICSee** (Xiongmai) operam nativamente por **ONVIF** e **RTSP** na rede local:
+     - **Porta ONVIF:** `8899`
+     - **Porta RTSP de Mídia:** `554`
+     - **Porta do App ICSee / NetSurveillance:** `34567`
+   - Em **Configurações ⚙️ ➡️ Dispositivos e Serviços ➡️ + Adicionar Integração**, busque por **ONVIF**:
+     - **Nome:** `Câmera ICSee` *(ou o cômodo correspondente)*.
+     - **Host:** IP local da câmera (ex: `192.168.0.4`).
+     - **Porta:** `8899` (ou `554`).
+     - **Usuário:** `admin`
+     - **Senha:** A senha cadastrada para a câmera no app ICSee.
+   - *Resultado:* Transmissão de vídeo ao vivo com baixa latência, snapshots e sensores de movimento disponíveis diretamente no dashboard do Home Assistant.
+
+5. **Integração Alimentador Rojeco (Tuya / Smart Life):**
+   - O hardware dos alimentadores Rojeco é baseado na plataforma Tuya:
+     - O alimentador pode ser pareado pelo app **Tuya Smart** ou **Smart Life** (colocando-o em modo de pareamento com o botão de Wi-Fi pressionado por 5s).
+   - Em **Configurações ⚙️ ➡️ Dispositivos e Serviços ➡️ + Adicionar Integração**, selecione **Tuya**.
+   - Abra o app Tuya/Smart Life no smartphone, use a função de leitura de QR Code para ler o código na tela do Home Assistant e confirme a vinculação.
+   - *Resultado:* Entidades de acionamento manual de porções, acompanhamento de registros de alimentação e alertas de reservatório vazio.
+
+6. **Integração Alexa (Amazon Echo - Anúncios por Voz e Mídia):**
+   - No **HACS** ➡️ **+ Explorar e baixar repositórios** ➡️ instale a integração **`Alexa Media Player`**.
+   - Reinicie o Home Assistant.
+   - Em **Configurações ⚙️ ➡️ Dispositivos e Serviços ➡️ + Adicionar Integração**, selecione **Alexa Media Player**:
+     - Insira seu e-mail e senha da Amazon.
+     - Domínio: **`amazon.com.br`**.
+     - Complete a verificação em duas etapas (2FA/OTP).
+   - *Resultado:* Suas caixas Echo funcionam como reprodutores de som e você pode criar automações com TTS (Text-to-Speech) para que a Alexa avise em voz alta quando o robô terminar de aspirar ou quando a comida dos gatos for servida.
 
 ---
 
