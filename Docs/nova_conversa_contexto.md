@@ -86,52 +86,35 @@ Os discos são conectados via USB 3.0 e montados de forma nativa e direta pelo u
 
 ---
 
-## 4. Foco Prioritário da Nova Conversa: Syncthing Multiplataforma (Pop!_OS + Windows 11 ↔ Nextcloud / Samba) 🎯
+## 4. Foco Prioritário da Nova Conversa: Immich (Google Fotos Auto-Hospedado & Backup Mobile) 🎯
 
-### 🚨 Prioridade 1: Pareamento e Sincronização P2P Contínua Multi-Dispositivo
-- **Objetivo:** Estabelecer a sincronização bidirecional em tempo real de documentos, projetos e arquivos de trabalho entre:
-  1. **Desktop Pop!_OS (Paulo):** Sincronização de pastas de desenvolvimento e arquivos pessoais para `/data/users/paulo` e `/data/shared`.
-  2. **Laptop Windows 11 (Kamila):** Sincronização contínua de pastas pessoais/trabalho da Kamila para `/data/users/kamila` e `/data/shared`.
-  3. **Mini PC umbrelOS:** Central de dados no `disk2` nativo, refletindo automaticamente no **Nextcloud** ("Meus Arquivos" / "Compartilhado") e nos compartilhamentos **Samba** (`smb://192.168.0.8/Paulo`, `Kamila`, `Compartilhado`).
+### 🚨 Prioridade 1: Configuração, Armazenamento no `disk2` e Backup Celular
+- **Objetivo:** Estabelecer a central de backup de fotos e vídeos da família (substituindo Google Fotos e iCloud) através do **Immich**, garantindo:
+  1. **Armazenamento no HD Externo (`disk2/immich`):** Garantir que os uploads, miniaturas e vídeos codificados sejam salvos no `disk2` com persistência blindada no `homelab-daemon.sh` contra atualizações da App Store do Umbrel.
+  2. **Contas e Compartilhamento:** Criar o usuário Admin (`Paulo`), a conta de usuária (`Kamila`) e configurar o recurso de **Partner Sharing** (Compartilhamento de Parceiro com linha do tempo integrada).
+  3. **Conexão Mobile (Android / iOS):** Configurar o aplicativo oficial do Immich nos smartphones com backup em segundo plano ativo tanto via Wi-Fi doméstico (`fotos.pk.local` / `192.168.0.8:2283`) quanto via **Tailscale** fora de casa.
+  4. **Aceleração de Machine Learning:** Validar o container `immich_machine-learning_1` para reconhecimento facial e busca semântica em português (CLIP/Smart Search).
 
-- **Arquitetura Homologada do Syncthing:**
-  - O container **Syncthing** roda na stack `management` (`http://192.168.0.8:8384` ou `http://umbrel.local:8384`).
-  - Mapeamentos de volumes já ativos e testados no `disk2`:
-    - `/data/users -> /home/umbrel/umbrel/external/disk2/users`
-      - `.../users/paulo` (Pasta pessoal Paulo)
-      - `.../users/kamila` (Pasta pessoal Kamila)
-    - `/data/shared -> /home/umbrel/umbrel/external/disk2/shared` (Compartilhado casal)
-
-- **Plano de Execução Imediato:**
-  1. **Configuração da Central Syncthing no Mini PC:**
-     - Acessar `http://192.168.0.8:8384` e definir senha mestra do Web GUI.
-     - Obter a identificação do dispositivo (Device ID) do Homelab.
-  2. **Pareamento com o Pop!_OS (Desktop Paulo):**
-     - Instalar/validar cliente Syncthing local (`sudo apt install syncthing` ou Syncthing GTK / Web UI `localhost:8384`).
-     - Parear com o mini PC via Device ID e vincular pastas (`Documentos/Projetos` -> `/data/users/paulo` e `Compartilhado` -> `/data/shared`).
-  3. **Pareamento com o Laptop Windows 11 (Kamila):**
-     - Instalar o cliente oficial recomendado para Windows: **SyncTrayzor** (GUI nativa com bandeja do sistema e auto-start) ou Syncthing Windows.
-     - Parear com o mini PC via Device ID.
-     - Configurar sincronização das pastas da Kamila apontando para `/data/users/kamila` e a pasta comum para `/data/shared`.
-  4. **Validação de Permissões e Reflexo no Nextcloud / Samba:**
-     - Testar envio de arquivos a partir do Pop!_OS e do Windows 11.
-     - Validar permissões UNIX (`chown -R umbrel:umbrel`, `chmod 775/777`) para que os arquivos fiquem imediatamente acessíveis no Nextcloud e no Samba.
-     - Executar rescan do Nextcloud via `occ files:scan --all` se necessário para indexação imediata na Web UI do Nextcloud.
+- **Status Atual dos Containers do Immich no Homelab:**
+  - `immich_server_1`: Saudável (Porta `2283`)
+  - `immich_machine-learning_1`: Saudável (Porta `3003`)
+  - `immich_postgres_1`: Saudável (Vectorchord + pgvectors)
+  - `immich_redis_1` & `immich_app_proxy_1`: Saudáveis e operacionais
 
 ---
 
 ## 5. Roteiro de Comandos para Diagnóstico Imediato
 
-Ao iniciar a nova conversa, execute no terminal do seu Pop!_OS:
+Ao iniciar a nova conversa sobre o Immich, execute no terminal do seu Pop!_OS:
 
 ```bash
 # 1. Rodar a suíte de testes de integridade para confirmar 100% de saúde do Homelab
 cd ~/Documentos/DevProjects/Bash/umbrelos-scripts
 ./tests/run_all.sh
 
-# 2. Conferir status do Syncthing e portas de sincronização no mini PC
-ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "sudo docker ps --filter 'name=syncthing' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+# 2. Conferir status dos containers do Immich no mini PC
+ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "sudo docker ps --filter 'name=immich' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 
-# 3. Verificar permissões das pastas de usuários e compartilhada no disk2
-ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "ls -la /home/umbrel/umbrel/external/disk2/users /home/umbrel/umbrel/external/disk2/shared"
+# 3. Verificar permissões e armazenamento da pasta do Immich no disk2
+ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "ls -la /home/umbrel/umbrel/external/disk2/immich"
 ```

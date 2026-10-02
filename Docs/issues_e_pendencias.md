@@ -95,15 +95,22 @@ Precisamos rodar testes práticos de ponta a ponta e validar as configurações 
 - [x] Permissões e rotinas de automação atualizadas no `homelab-daemon.sh` (com auto-reinjeção de volumes pós-updates).
 - [x] Acesso remoto via Tailscale (VPN) 100% homologado em smartphones/dispositivos remotos com `trusted_domains` e `trusted_proxies` persistidos no `config.php` via `occ`.
 - [x] Rotina de recuperação e reset de senhas homologada via CLI (`occ user:resetpassword`).
+- [x] **Sincronização Contínua nos Desktops/Laptops:** Homologado com **Nextcloud Desktop Client** oficial (`com.nextcloud.desktopclient.nextcloud` no Pop!_OS em autostart com `--background` e aplicativo oficial no Windows 11). Evita duplicidade e concorrência de escrita com outros motores de sincronização.
+- [x] **Syncthing (Standby Estratégico):** Container Syncthing (`:8384`, `:22000`, `:21027`) operacional no Homelab e pacote/regras de firewall UFW incluídas na automação do Pop!_OS (`popos-workstation-setup`), mantido em standby para casos de uso pontuais que fujam ao escopo do Nextcloud.
 
 ### 4. Immich (`http://fotos.pk.local` ou porta `:2283`)
-- [ ] Testar primeiro login no Immich.
-- [ ] Validar se o upload de fotos está apontando para o armazenamento no MergerFS (`/mnt/storage/immich/upload`).
-- [ ] Testar o app mobile (Android / iOS) conectado no domínio local e via Tailscale.
+- [ ] Validar e apontar o armazenamento de fotos para o HD dedicado (`disk2/immich`), garantindo persistência no `homelab-daemon.sh` caso haja updates do app pelo Umbrel.
+- [ ] Acessar `http://192.168.0.8:2283` (ou `http://fotos.pk.local`) e criar conta de administrador inicial.
+- [ ] Criar contas de usuário para `Paulo` e `Kamila` e habilitar bibliotecas compartilhadas/álbuns de parceiro (Partner Sharing).
+- [ ] Configurar os aplicativos mobile (Android / iOS) com backup automático da câmera conectado via rede local (`fotos.pk.local`) e via Tailscale.
 
-### 5. Home Assistant (`http://home.pk.local` ou porta `:8123`)
-- [ ] Acessar e criar conta de administrador inicial.
-- [ ] Validar descoberta automática de dispositivos da rede local (Smart TVs Samsung, lâmpadas, roteadores).
+### 5. Home Assistant (`http://home.pk.local` ou porta `:8123`) (CONCLUÍDO / HOMOLOGADO ✅)
+- [x] Acesso web e criação de conta admin `paulo` concluídos com fuso horário `America/Campo_Grande` (UTC-4).
+- [x] Loja comunitária **HACS** instalada e autorizada via GitHub.
+- [x] **Robô Aspirador Xiaomi:** Homologado via integração `Xiaomi Miot Auto` (HACS) conectado com conta Xiaomi.
+- [x] **Câmeras ICSee (Xiongmai):** Homologado via protocolo nativo `ONVIF` (`192.168.0.4:8899`), transmitindo vídeo em tempo real (RTSP `:554`) e sensor de presença.
+- [x] **Alimentador Rojeco:** Homologado via integração nativa `Tuya` com controle de porções e refeições.
+- [x] **Alexa (Amazon Echo):** Homologado via integração `Alexa Media Player` (HACS) no domínio `amazon.com.br`, permitindo notificações por voz e reprodução de mídia.
 
 ### 6. IT-Tools (`http://it.pk.local` ou porta `:8080`)
 - [ ] Validar carregamento das ferramentas de desenvolvedor (gerador de hash, JSON formatter, Docker Run to Compose converter, etc.).
