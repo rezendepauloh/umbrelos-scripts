@@ -72,6 +72,40 @@ Este documento centraliza todas as pendências identificadas, pontos de atençã
 
 ---
 
+## 🚨 Issue 6 (Pendente): Áudio Bidirecional (Talkback) e Unmute Automático na Câmera ICSee (WebRTC / ONVIF)
+
+### 📌 Problema Identificado:
+- **Streaming de Vídeo e PTZ Homologados:** O painel em tela cheia via `custom:webrtc-camera` exibe o vídeo em tempo real com latência zero e os botões direcionais (Cima, Baixo, Esquerda, Direita) rotacionam a câmera com sucesso. Gravação de 30s e snapshots também operam normalmente.
+- **Pendências Identificadas:**
+  1. **Áudio Bidirecional (Microfone / Talkback):** Ao acionar o atalho de microfone no WebRTC, a voz do usuário não é reproduzida pelo alto-falante da câmera ICSee (chip Xiongmai XM530). O stream proprietário do ICSee na porta `34567` (protocolo Sofia/NetSurveillance) ou o codec de retorno (G.711 A-law / AAC) exige negociação específica de canal de áudio bidirecional ou proxy com go2rtc dedicado.
+  2. **Inicialização do Áudio Desmutado (Unmute por Padrão):** Os navegadores modernos bloqueiam autoplay de mídia com som ativo por política de segurança (*Autoplay Policy*), ignorando a diretiva `muted: false` sem interação prévia do usuário na página.
+- **Objetivo:**
+  - Investigar e homologar o envio de áudio bidirecional direto para o alto-falante da câmera sem depender do aplicativo oficial cheio de anúncios.
+---
+
+## 🚨 Issue 7 (Pendente): Wake-On-LAN e Abertura Direta de Apps/Canais em Smart TVs Samsung (Tizen OS)
+
+### 📌 Problema Identificado:
+- **Navegação Remota e Teclado Homologados:** O painel de controle remoto com D-Pad (`remote.send_command`), botões direcionais, OK, Home, Return, volume e teclado numérico responde imediatamente com a TV ligada.
+- **Pendências Identificadas:**
+  1. **Wake-On-LAN com TV em Standby:** Ao tentar ligar a TV Samsung da Sala (`UN70CU7700GXZD` / MAC `1c:af:4a:d4:c6:e2`) ou o Projetor Paumila pelo botão Ligar quando em standby profundo, a interface Wi-Fi da TV desliga o chip de rede e o pacote mágico WOL via broadcast (`192.168.0.255:9`) não acorda o aparelho (comum em redes Wi-Fi mesh/Claro que barram pacotes de broadcast sem cabo de rede ou proxy SmartThings).
+  2. **Abertura Direta de Apps (`select_source`):** A integração padrão `samsungtv` do Home Assistant expõe apenas fontes de entrada física de hardware (ex: `HDMI1`, `HDMI2`, `TV`), retornando o erro `does not support source <App>` ao tentar acionar apps de streaming (Prime Video, YouTube, Disney+, Jellyfin, Samsung TV Plus) diretamente pelo nome de entrada.
+- **Objetivo:**
+  - Avaliar a integração da TV via **SamsungTV Smart** (HACS / SmartThings API) para mapear os IDs de aplicativos instalados (App IDs Tizen) e permitir atalhos diretos.
+---
+
+## 🚨 Issue 8 (Pendente): Controle Dedicado e Integração da Bedroom TV (2º Monitor Pop!_OS)
+
+### 📌 Problema Identificado:
+- **Dispositivo Diferente:** A **Bedroom TV** (`media_player.bedroom_tv`) não é uma Smart TV Tizen convencional da sala, mas sim o segundo monitor conectado à workstation Pop!_OS do Paulo.
+- **Pendências Identificadas:**
+  1. **Controle Remoto Dedicado no Dashboard:** Criar um painel e controle remoto dedicado para a `Bedroom TV` no Home Assistant (assim como foi feito para a TV da Sala e o Projetor Paumila).
+  2. **Mapeamento de Comandos e Controles do Display:** Verificar o tipo de integração atual (se UPnP/DLNA, Cast ou via comandos de sistema do Pop!_OS via SSH/HA Agent/MQTT) para definir quais comandos de mídia, volume, mute, energia (DPMS/ligar/desligar tela) e entradas são suportados de forma confiável.
+- **Objetivo:**
+  - Criar cartão de controle com layout adaptado para a `Bedroom TV` e homologar o controle de mídia e energia diretamente pelo Home Assistant.
+
+---
+
 ## 🧪 Issue 2: Bateria de Testes e Validação dos Demais Serviços
 
 Precisamos rodar testes práticos de ponta a ponta e validar as configurações dos seguintes serviços instalados:
@@ -107,10 +141,15 @@ Precisamos rodar testes práticos de ponta a ponta e validar as configurações 
 ### 5. Home Assistant (`http://home.pk.local` ou porta `:8123`) (CONCLUÍDO / HOMOLOGADO ✅)
 - [x] Acesso web e criação de conta admin `paulo` concluídos com fuso horário `America/Campo_Grande` (UTC-4).
 - [x] Loja comunitária **HACS** instalada e autorizada via GitHub.
-- [x] **Robô Aspirador Xiaomi:** Homologado via integração `Xiaomi Miot Auto` (HACS) conectado com conta Xiaomi.
-- [x] **Câmeras ICSee (Xiongmai):** Homologado via protocolo nativo `ONVIF` (`192.168.0.4:8899`), transmitindo vídeo em tempo real (RTSP `:554`) e sensor de presença.
-- [x] **Alimentador Rojeco:** Homologado via integração nativa `Tuya` com controle de porções e refeições.
+- [x] **Robô Aspirador Xiaomi (Clemildo):** Homologado via integração `Xiaomi Miot Auto` (HACS) conectado em modo Nuvem (Cloud).
+- [x] **Câmeras ICSee (Xiongmai):** Homologado via protocolo nativo `ONVIF` (`192.168.0.4:8899`) e `custom:webrtc-camera`, com vídeo de baixa latência, rotação PTZ contínua com eixos corrigidos, botões de foto/screenshot e gravação de 30s (`.mp4`) com download direto.
+- [x] **Alimentador Rojeco (Hector food):** Homologado via integração nativa `Tuya` com controle de porções e refeições.
 - [x] **Alexa (Amazon Echo):** Homologado via integração `Alexa Media Player` (HACS) no domínio `amazon.com.br`, permitindo notificações por voz e reprodução de mídia.
+- [ ] **Smart Displays & TVs (Controle Remoto Completo & Wake-On-LAN):**
+  - **TV da Sala (TV Paumila):** Modelo Samsung `UN70CU7700GXZD` (`192.168.0.5`, MAC `1c:af:4a:d4:c6:e2`) - Controle remoto D-Pad, Cores e Numérico homologado ✅; Wake-On-LAN e atalhos de apps abertos na Issue 7.
+  - **Projetor da Sala/Quarto (Projetor Paumila):** Modelo Samsung The Freestyle `SP-LSP3BLAXZA` (`192.168.0.13`, MAC `80:8a:bd:2e:1a:d8`) - Controle remoto completo homologado ✅; Wake-On-LAN e atalhos de apps abertos na Issue 7.
+  - **Bedroom TV:** Segundo monitor do computador Pop!_OS (`media_player.bedroom_tv`) - Aberto na Issue 8 para criação de controle dedicado e mapeamento dos comandos.
+  - **Correção de Wake-On-LAN:** Automação explícita de `wake_on_lan` configurada no `automations.yaml` e `configuration.yaml` (ajustes finos de standby em investigação na Issue 7).
 
 ### 6. IT-Tools (`http://it.pk.local` ou porta `:8080`)
 - [ ] Validar carregamento das ferramentas de desenvolvedor (gerador de hash, JSON formatter, Docker Run to Compose converter, etc.).
