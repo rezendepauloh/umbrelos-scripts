@@ -92,3 +92,4 @@ Gerenciadas no diretório `/home/umbrel/umbrelos-scripts/compose/`:
      - Backups completos de bancos (Immich, Nextcloud) e pastas críticas de apps (Jellyfin data) DEVEM ser efetuados e enviados para o Pop!_OS (`/mnt/storage_930/Backups_Homelab`).
 5. **Segurança e .gitignore:**
    - NUNCA versione arquivos contendo senhas reais ou chaves privadas (`config.env`, `.env`, `smb.conf` com dados sensíveis). Use sempre os templates `.example`.
+
