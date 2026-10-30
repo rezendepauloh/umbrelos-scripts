@@ -9,8 +9,14 @@ config/samba/smb.conf
 # Chaves e certificados
 *.key
 *.pem
+*.crt
+*.srl
+*.csr
 id_rsa*
 id_ed25519*
+config/ssl/
+!config/ssl/*.cnf
+!config/ssl/*.example
 
 # Volumes de dados locais das Stacks Docker
 **/data/

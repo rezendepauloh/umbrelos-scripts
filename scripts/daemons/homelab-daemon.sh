@@ -231,13 +231,75 @@ for j in {1..60}; do
             echo "Samba validado e ativo pós-boot: smbd=$(systemctl is-active smbd), wsdd2=$(systemctl is-active wsdd2)"
         fi
 
-        # 7. Garantir agendamento do Cronjob do BeTor (sobrevive a reboots)
+        # 7. Garantir agendamento do Cronjob do BeTor e Timer do Backup Semanal
         cat << 'CRON_EOF' > /etc/cron.d/betor-sync
 0 */6 * * * root /usr/bin/docker exec prowlarr curl -s -X POST http://betor-scrapyd:6800/schedule.json -d project=betor -d spider=comando-torrents >/dev/null 2>&1
 5 */6 * * * root /usr/bin/docker exec prowlarr curl -s -X POST http://betor-scrapyd:6800/schedule.json -d project=betor -d spider=bludv >/dev/null 2>&1
 CRON_EOF
         chmod 644 /etc/cron.d/betor-sync
         echo "Cronjob do BeTor configurado e persistido com sucesso"
+
+        # 8. Garantir que o Systemd Timer de Backup Semanal e EPG estejam ativos pós-boot
+        if [ -f "/data/bin/homelab-backup-semanal.sh" ]; then
+            cat << 'SERVICE_EOF' > /etc/systemd/system/homelab-backup.service
+[Unit]
+Description=Rotina Consolidada de Backup do Homelab (disk3 e Pop!_OS)
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/data/bin/homelab-backup-semanal.sh
+TimeoutStartSec=45min
+User=root
+SERVICE_EOF
+
+            cat << 'TIMER_EOF' > /etc/systemd/system/homelab-backup.timer
+[Unit]
+Description=Timer para Backup Semanal do Homelab
+Requires=homelab-backup.service
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+TIMER_EOF
+
+            systemctl daemon-reload
+            systemctl enable --now homelab-backup.timer 2>/dev/null || true
+            echo "Timer de backup semanal verificado e ativo."
+        fi
+
+        # 9. Garantir o redirecionamento de Portas 80 e 443 para o NPM (8088 e 8443) para resolver *.pk.local com HTTPS
+        cat << 'REDIRECT_EOF' > /etc/systemd/system/homelab-port80-redirect.service
+[Unit]
+Description=Redirecionamento de Portas 80 e 443 para Nginx Proxy Manager (8088 e 8443)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c "/sbin/iptables -t nat -A PREROUTING -p tcp -d 192.168.0.8 --dport 80 -j REDIRECT --to-ports 8088 && /sbin/iptables -t nat -A PREROUTING -p tcp -d 192.168.0.8 --dport 443 -j REDIRECT --to-ports 8443"
+ExecStop=/bin/sh -c "/sbin/iptables -t nat -D PREROUTING -p tcp -d 192.168.0.8 --dport 80 -j REDIRECT --to-ports 8088 && /sbin/iptables -t nat -D PREROUTING -p tcp -d 192.168.0.8 --dport 443 -j REDIRECT --to-ports 8443"
+
+[Install]
+WantedBy=multi-user.target
+REDIRECT_EOF
+
+        systemctl daemon-reload
+        systemctl enable --now homelab-port80-redirect.service 2>/dev/null || true
+        echo "Redirecionamento de portas 80/443 para dominios *.pk.local ativo e persistido."
+
+        # 10. Persistência de Ícones Customizados e Roteamento HTTPS dos Apps Oficiais da Loja
+        if [ -d "/data/custom-icons" ] && [ -d "/opt/umbreld/ui/assets" ]; then
+            cp -r /data/custom-icons /opt/umbreld/ui/assets/ 2>/dev/null || true
+        fi
+        if [ -f "/data/pin-input-91w9eY2s.js.patched" ] && [ -f "/opt/umbreld/ui/assets/pin-input-91w9eY2s.js" ]; then
+            cp /data/pin-input-91w9eY2s.js.patched /opt/umbreld/ui/assets/pin-input-91w9eY2s.js 2>/dev/null || true
+        fi
+
         break
     fi
     sleep 2

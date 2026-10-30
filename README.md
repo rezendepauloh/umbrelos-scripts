@@ -1,6 +1,6 @@
 # 🚀 umbrelOS Homelab Setup Suite
 
-[![umbrelOS](https://img.shields.io/badge/umbrelOS-v1.x-blue.svg)](https://umbrel.com)
+[![umbrelOS](https://img.shields.io/badge/umbrelOS-v2.x-blue.svg)](https://umbrel.com)
 [![Hardware](https://img.shields.io/badge/Hardware-Blackview%20MP100%20Pro-green.svg)](https://www.blackview.hk)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](#)
