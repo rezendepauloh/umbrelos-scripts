@@ -52,27 +52,27 @@ show_menu() {
 }
 
 run_module_1() {
-    source "${SCRIPT_DIR}/scripts/01_system_prep.sh"
+    source "${SCRIPT_DIR}/scripts/setup/01_system_prep.sh"
 }
 
 run_module_2() {
-    source "${SCRIPT_DIR}/scripts/02_storage_setup.sh"
+    source "${SCRIPT_DIR}/scripts/setup/02_storage_setup.sh"
 }
 
 run_module_3() {
-    source "${SCRIPT_DIR}/scripts/03_samba_setup.sh"
+    source "${SCRIPT_DIR}/scripts/setup/03_samba_setup.sh"
 }
 
 run_module_4() {
-    source "${SCRIPT_DIR}/scripts/04_docker_custom_stacks.sh"
+    source "${SCRIPT_DIR}/scripts/setup/04_docker_custom_stacks.sh"
 }
 
 run_module_5() {
-    source "${SCRIPT_DIR}/scripts/05_security_network.sh"
+    source "${SCRIPT_DIR}/scripts/setup/05_security_network.sh"
 }
 
 run_module_6() {
-    source "${SCRIPT_DIR}/scripts/06_backup_popos.sh"
+    source "${SCRIPT_DIR}/scripts/setup/06_backup_popos.sh"
 }
 
 run_all() {

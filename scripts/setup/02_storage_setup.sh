@@ -62,7 +62,7 @@ if [[ -f "${SCRIPT_DIR}/config.env" ]]; then
     cp -f "${SCRIPT_DIR}/config.env" /data/config.env
     chmod 600 /data/config.env
 fi
-cp -f "${SCRIPT_DIR}/scripts/homelab-daemon.sh" /data/bin/homelab-daemon.sh
+cp -f "${SCRIPT_DIR}/scripts/daemons/homelab-daemon.sh" /data/bin/homelab-daemon.sh
 chmod +x /data/bin/homelab-daemon.sh
 
 # 5. Registrar no Hook Oficial do umbrelOS (/home/umbrel/umbrel/custom-hooks/pre-start)

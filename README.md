@@ -508,6 +508,41 @@ ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "/home/umbrel/umbrelos-scripts/tests
   ```bash
   df -h
   ```
+- **Atualizar Guia de Programação (EPG XMLTV) da TV ao Vivo no Jellyfin**:
+  ```bash
+  /data/bin/generate_epg.sh
+  ```
+
+---
+
+## 📂 Estrutura de Diretórios do Repositório
+
+```text
+umbrelos-scripts/
+├── AGENTS.md                  # Diretrizes canônicas para agentes de IA e arquitetura
+├── config/                    # Templates e arquivos de configuração
+│   ├── iptv/                  # Lista de canais curados (canais_brasil.m3u)
+│   ├── samba/                 # Configuração do Samba (smb.conf)
+│   └── ...
+├── compose/                   # Stacks Docker Compose (arr-stack, management, betor, etc.)
+├── Docs/                      # Guias detalhados de arquitetura, testes e rotinas
+├── scripts/
+│   ├── setup/                 # Módulos sequenciais de instalação do zero (01 a 06)
+│   │   ├── 01_system_prep.sh
+│   │   ├── 02_storage_setup.sh
+│   │   ├── 03_samba_setup.sh
+│   │   ├── 04_docker_custom_stacks.sh
+│   │   ├── 05_security_network.sh
+│   │   ├── 06_backup_databases.sh
+│   │   └── 06_backup_popos.sh
+│   ├── daemons/               # Daemons de inicialização e persistência
+│   │   └── homelab-daemon.sh
+│   └── utils/                 # Scripts utilitários de manutenção e automação
+│       ├── generate_epg.sh    # Gerador de grade EPG XMLTV sob medida para Jellyfin
+│       └── backup_pre_upgrade.sh # Rotina de snapshot e backup completo pré-upgrade
+├── tests/                     # Bateria de testes de integridade do Homelab
+└── setup_umbrelos.sh          # Orquestrador principal interativo
+```
 
 ---
 
