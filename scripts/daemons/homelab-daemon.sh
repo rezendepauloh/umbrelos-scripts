@@ -192,6 +192,9 @@ for j in {1..60}; do
         if [ -d "/home/umbrel/umbrelos-scripts/compose/management" ]; then
             cd /home/umbrel/umbrelos-scripts/compose/management && docker compose --env-file /home/umbrel/umbrelos-scripts/.env up -d || true
         fi
+        if [ -d "/home/umbrel/umbrelos-scripts/compose/tunnels" ]; then
+            cd /home/umbrel/umbrelos-scripts/compose/tunnels && docker compose --env-file /data/config.env up -d || true
+        fi
         if [ -d "/home/umbrel/umbrelos-scripts/compose/arr-stack" ]; then
             cd /home/umbrel/umbrelos-scripts/compose/arr-stack && docker compose --env-file /home/umbrel/umbrelos-scripts/.env up -d || true
         fi

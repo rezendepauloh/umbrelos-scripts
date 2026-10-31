@@ -1,0 +1,66 @@
+services:
+  # 1. Painel Principal umbrelOS
+  zrok-umbrel:
+    image: openziti/zrok2:latest
+    container_name: zrok-umbrel
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["share", "public", "http://172.18.0.1:80", "-n", "public:umbrel-paulo", "--headless"]
+    volumes:
+      - /data/zrok/.zrok2:/home/ziggy/.zrok2
+
+  # 2. Plataforma Clínica Karteman
+  zrok-karteman:
+    image: openziti/zrok2:latest
+    container_name: zrok-karteman
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["share", "public", "http://karteman-app:8081", "-n", "public:karteman-paulo", "--headless"]
+    volumes:
+      - /data/zrok/.zrok2:/home/ziggy/.zrok2
+
+  # 3. Robô Verifica Diários Oficiais (Blindado com Basic Auth)
+  zrok-diarios:
+    image: openziti/zrok2:latest
+    container_name: zrok-diarios
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["share", "public", "http://verifica-diarios-app:8093", "-n", "public:diarios-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--headless"]
+    volumes:
+      - /data/zrok/.zrok2:/home/ziggy/.zrok2
+
+  # 4. App Investimentos Pessoais (Blindado com Basic Auth)
+  zrok-investimentos:
+    image: openziti/zrok2:latest
+    container_name: zrok-investimentos
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["share", "public", "http://paulo-investimentos-app:8094", "-n", "public:investimentos-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--headless"]
+    volumes:
+      - /data/zrok/.zrok2:/home/ziggy/.zrok2
+
+  # 5. Nextcloud (Nuvem de Arquivos e Documentos)
+  zrok-cloud:
+    image: openziti/zrok2:latest
+    container_name: zrok-cloud
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["share", "public", "http://172.18.0.1:8081", "-n", "public:cloud-paulo", "--headless"]
+    volumes:
+      - /data/zrok/.zrok2:/home/ziggy/.zrok2
+
+  # 6. Jellyfin (Servidor de Mídia & Streaming)
+  zrok-jellyfin:
+    image: openziti/zrok2:latest
+    container_name: zrok-jellyfin
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["share", "public", "http://172.18.0.1:8096", "-n", "public:jellyfin-paulo", "--headless"]
+    volumes:
+      - /data/zrok/.zrok2:/home/ziggy/.zrok2
+
+
+networks:
+  default:
+    name: homelab_network
+    external: true

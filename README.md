@@ -526,6 +526,7 @@ umbrelos-scripts/
 │   └── ...
 ├── compose/                   # Stacks Docker Compose (arr-stack, management, betor, etc.)
 ├── Docs/                      # Guias detalhados de arquitetura, testes e rotinas
+│   ├── zrok_acesso_remoto.md                 # Guia de acesso remoto fixo gratuito com zrok v2 (Zero-Trust)
 │   ├── instalacao_certificado_ssl_homelab.md # Guia de instalação da CA em clientes
 │   ├── cloudflare_tunnels_acesso_remoto.md   # Guia de túneis Cloudflare contra bloqueios corporativos
 │   └── pos_instalacao_portas_e_testes.md     # Catálogo completo de serviços e portas
