@@ -53,7 +53,7 @@ O umbrelOS possui raiz imutável via Rugix. Por esse motivo, todos os dados de a
 
 ## 4. Declaração no Docker Compose
 
-Os 5 túneis essenciais estão organizados de forma dedicada na stack `compose/tunnels/docker-compose.yml`, conectando-se diretamente à bridge `homelab_network`:
+Os 6 túneis essenciais estão organizados de forma dedicada na stack `compose/tunnels/docker-compose.yml`, conectando-se diretamente à bridge `homelab_network`:
 
 ```yaml
 services:

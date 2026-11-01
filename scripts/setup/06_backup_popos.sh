@@ -14,9 +14,10 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 [[ -f "${SCRIPT_DIR}/lib/common.sh" ]] && source "${SCRIPT_DIR}/lib/common.sh"
 [[ -f "${SCRIPT_DIR}/config.env" ]] && source "${SCRIPT_DIR}/config.env"
+[[ -f "/data/config.env" ]] && source "/data/config.env"
 
 log_step "Módulo 6: Instalação do Backup Remoto Inteligente para Pop!_OS"
 
@@ -69,7 +70,15 @@ fi
 echo "Host remoto online! Iniciando transferência para \$BACKUP_DIR..."
 
 # 2. Garante os diretórios criados no destino
-ssh -i "\$SSH_KEY" -o StrictHostKeyChecking=accept-new "\${POPOS_USER}@\${POPOS_HOST}" "mkdir -p '\${BACKUP_DIR}/databases' '\${BACKUP_DIR}/nextcloud_users' '\${BACKUP_DIR}/shared' '\${BACKUP_DIR}/configs'"
+ssh -i "\$SSH_KEY" -o StrictHostKeyChecking=accept-new "\${POPOS_USER}@\${POPOS_HOST}" "mkdir -p '\${BACKUP_DIR}/databases' '\${BACKUP_DIR}/nextcloud_users' '\${BACKUP_DIR}/shared' '\${BACKUP_DIR}/immich_photos' '\${BACKUP_DIR}/configs'"
+
+# Identificar o backup anterior para --link-dest (deduplicação via hardlinks)
+LATEST_BACKUP=\$(ssh -i "\$SSH_KEY" "\${POPOS_USER}@\${POPOS_HOST}" "cd '\${POPOS_DEST}' && ls -dt backup_* 2>/dev/null | grep -v '\${DATE}' | head -n 1" || true)
+LINK_OPT=""
+if [ -n "\$LATEST_BACKUP" ]; then
+    echo "Usando backup anterior (\$LATEST_BACKUP) como referência para hardlinks..."
+    LINK_OPT="--link-dest=\${POPOS_DEST}/\${LATEST_BACKUP}"
+fi
 
 # 3. Dumps dos bancos de dados locais
 echo "Gerando dumps dos bancos de dados..."
@@ -79,23 +88,27 @@ mkdir -p "\$TMP_DUMP"
 # Immich Postgres
 IMMICH_CONTAINER=\$(docker ps --format '{{.Names}}' | grep -E 'immich.*(postgres|database)' | head -n 1 || true)
 if [ -n "\$IMMICH_CONTAINER" ]; then
-    docker exec "\$IMMICH_CONTAINER" pg_dumpall -U postgres 2>/dev/null | gzip > "\${TMP_DUMP}/immich_db.sql.gz" || true
+    docker exec "\$IMMICH_CONTAINER" pg_dumpall -U immich 2>/dev/null | gzip > "\${TMP_DUMP}/immich_db.sql.gz" || true
 fi
 
 # Nextcloud DB
 NC_DB_CONTAINER=\$(docker ps --format '{{.Names}}' | grep -E 'nextcloud.*(db|mariadb|postgres|mysql)' | head -n 1 || true)
 if [ -n "\$NC_DB_CONTAINER" ]; then
-    docker exec "\$NC_DB_CONTAINER" mariadb-dump -u root --all-databases 2>/dev/null | gzip > "\${TMP_DUMP}/nextcloud_db.sql.gz" || true
+    docker exec "\$NC_DB_CONTAINER" mariadb-dump -u root -pmoneyprintergobrrr --all-databases 2>/dev/null | gzip > "\${TMP_DUMP}/nextcloud_db.sql.gz" || true
 fi
 
 # Envia os dumps compactados
 rsync -avz -e "ssh -i \$SSH_KEY" "\${TMP_DUMP}/" "\${POPOS_USER}@\${POPOS_HOST}:\${BACKUP_DIR}/databases/"
 rm -rf "\$TMP_DUMP"
 
-# 4. Sincroniza arquivos de usuários e compartilhados (disk2)
-echo "Sincronizando arquivos de usuários e compartilhados..."
-rsync -avz --delete -e "ssh -i \$SSH_KEY" "\${SRC_USERS}" "\${POPOS_USER}@\${POPOS_HOST}:\${BACKUP_DIR}/nextcloud_users/"
-rsync -avz --delete -e "ssh -i \$SSH_KEY" "\${SRC_SHARED}" "\${POPOS_USER}@\${POPOS_HOST}:\${BACKUP_DIR}/shared/"
+# 4. Sincroniza arquivos de usuários, compartilhados e fotos do Immich (disk2)
+echo "Sincronizando arquivos de usuários, compartilhados e fotos do Immich..."
+rsync -avz --delete \$LINK_OPT -e "ssh -i \$SSH_KEY" "\${SRC_USERS}" "\${POPOS_USER}@\${POPOS_HOST}:\${BACKUP_DIR}/nextcloud_users/"
+rsync -avz --delete \$LINK_OPT -e "ssh -i \$SSH_KEY" "\${SRC_SHARED}" "\${POPOS_USER}@\${POPOS_HOST}:\${BACKUP_DIR}/shared/"
+
+if [ -d "/home/umbrel/umbrel/external/disk2/immich/upload" ]; then
+    rsync -avz --delete \$LINK_OPT -e "ssh -i \$SSH_KEY" /home/umbrel/umbrel/external/disk2/immich/upload/ "\${POPOS_USER}@\${POPOS_HOST}:\${BACKUP_DIR}/immich_photos/"
+fi
 
 # 5. Salva cópia das configurações críticas
 echo "Sincronizando configurações essenciais..."

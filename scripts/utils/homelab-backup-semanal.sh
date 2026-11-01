@@ -80,9 +80,9 @@ if [[ -f "/home/umbrel/umbrel/app-data/jellyfin/data/data/jellyfin.db" ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 2. CONFIGURAÇÕES E DADOS ESSENCIAIS (disk2: users e shared)
+# 2. CONFIGURAÇÕES E DADOS ESSENCIAIS (disk2: users, shared e immich)
 # ------------------------------------------------------------------------------
-echo "[+] 2/4 Sincronizando dados essenciais de usuários e configurações..."
+echo "[+] 2/4 Sincronizando dados essenciais de usuários, fotos e configurações..."
 
 # Samba & Configs do Homelab
 rsync -a /data/samba/smb.conf "${LOCAL_DEST}/configs/" 2>/dev/null || true
@@ -102,6 +102,12 @@ fi
 if [[ -d "/home/umbrel/umbrel/external/disk2/shared" ]]; then
     echo "    -> Sincronizando pasta compartilhada do disk2..."
     rsync -a --delete /home/umbrel/umbrel/external/disk2/shared/ "${LOCAL_DEST}/shared/"
+fi
+
+# Fotos e Uploads do Immich no disk2
+if [[ -d "/home/umbrel/umbrel/external/disk2/immich/upload" ]]; then
+    echo "    -> Sincronizando fotos e vídeos do Immich (disk2)..."
+    rsync -a --delete /home/umbrel/umbrel/external/disk2/immich/upload/ "${LOCAL_DEST}/immich_photos/"
 fi
 
 sync
@@ -133,13 +139,22 @@ fi
 echo "[+] 3/4 Verificando conectividade com o Desktop Pop!_OS (${POPOS_HOST})..."
 
 if ping -c 2 -W 2 "${POPOS_HOST}" >/dev/null 2>&1; then
-    echo "    -> Pop!_OS online! Iniciando espelhamento remoto via rsync..."
+    echo "    -> Pop!_OS online! Preparando espelhamento remoto via rsync..."
+    
+    # Descobrir o backup remoto mais recente no Pop!_OS para link-dest
+    LATEST_REMOTE=$(ssh -i "${SSH_KEY}" -o BatchMode=yes "${POPOS_USER}@${POPOS_HOST}" "cd '${POPOS_DEST}' && ls -dt backup_* 2>/dev/null | head -n 1" || true)
     
     # Criar pasta remota
     ssh -i "${SSH_KEY}" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "${POPOS_USER}@${POPOS_HOST}" "mkdir -p '${POPOS_DEST}/${BACKUP_NAME}'"
     
-    # Transferência incremental
-    rsync -avz --delete -e "ssh -i ${SSH_KEY} -o BatchMode=yes" "${LOCAL_DEST}/" "${POPOS_USER}@${POPOS_HOST}:${POPOS_DEST}/${BACKUP_NAME}/"
+    LINK_DEST_OPT=""
+    if [[ -n "$LATEST_REMOTE" ]]; then
+        echo "    -> Utilizando backup anterior (${LATEST_REMOTE}) como base para deduplicação (hardlinks)..."
+        LINK_DEST_OPT="--link-dest=${POPOS_DEST}/${LATEST_REMOTE}"
+    fi
+
+    # Transferência incremental inteligente com deduplicação
+    rsync -avz --delete $LINK_DEST_OPT -e "ssh -i ${SSH_KEY} -o BatchMode=yes" "${LOCAL_DEST}/" "${POPOS_USER}@${POPOS_HOST}:${POPOS_DEST}/${BACKUP_NAME}/"
     echo "    -> Espelhamento remoto concluído com sucesso!"
     
     # Retenção remota no Pop!_OS (Mantém os 7 mais recentes)

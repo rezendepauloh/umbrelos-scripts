@@ -120,6 +120,14 @@ umount -l /home/umbrel/umbrel/home/Downloads/media 2>/dev/null || true
 mount --bind "$DIR_MED" /home/umbrel/umbrel/home/Downloads/media || true
 echo "Bind mount nativo do Jellyfin aplicado com sucesso!"
 
+# 3.1 Garantir bind mount nativo do Immich para o disk2 (HD Nuvem e Fotos)
+IMMICH_UPLOAD_SRC="/home/umbrel/umbrel/external/disk2/immich/upload"
+IMMICH_UPLOAD_DST="/home/umbrel/umbrel/app-data/immich/data/upload"
+if [ -d "$IMMICH_UPLOAD_SRC" ] && [ -d "$IMMICH_UPLOAD_DST" ]; then
+    mountpoint -q "$IMMICH_UPLOAD_DST" || mount --bind "$IMMICH_UPLOAD_SRC" "$IMMICH_UPLOAD_DST" || true
+    echo "Bind mount nativo do Immich (disk2 -> upload) garantido com sucesso!"
+fi
+
 # 4. Restaurar smb.conf customizado e reiniciar o Samba preliminarmente
 if [ -f "/data/samba/smb.conf" ]; then
     cp /data/samba/smb.conf /etc/samba/smb.conf

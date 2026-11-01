@@ -136,12 +136,11 @@ sudo iptables -t nat -A PREROUTING -i enp1s0 -p tcp --dport 80 -j REDIRECT --to-
 #### 1.4. Testar os Compartilhamentos Samba e Persistência do MergerFS
 No seu Pop!_OS, utilize preferencialmente o **Nautilus** (`sudo apt install nautilus gvfs-backends`), que oferece estabilidade total na escrita SMB e gerenciamento de permissões (o Cosmic Files ainda possui instabilidades de cache/gravação em conexões de rede SMB):
 Pressione `Ctrl + L` no Nautilus (ou vá em *Outros Locais* ➡️ *Conectar ao Servidor*):
-- `smb://192.168.0.8/Media` (ou `smb://umbrel.local/Media` - Leitura e gravação livre)
-- `smb://192.168.0.8/Compartilhado` (Pasta colaborativa Paulo e Kamila)
-- `smb://192.168.0.8/Paulo` (Pasta privada de Paulo - autenticação exclusiva)
-- `smb://192.168.0.8/Kamila` (Pasta privada de Kamila - autenticação exclusiva)
-- `smb://192.168.0.8/Backups` (Compartilhamento restrito para backups)
-- `smb://192.168.0.8/Dev` (Compartilhamento para projetos e códigos)
+- `smb://192.168.0.8/Midia` (ou `smb://umbrel.local/Midia` - Leitura e gravação livre)
+- `smb://192.168.0.8/Compartilhado` (Pasta colaborativa Paulo e Kamila no disk2)
+- `smb://192.168.0.8/Paulo` (Pasta privada de Paulo no disk2 - autenticação exclusiva)
+- `smb://192.168.0.8/Kamila` (Pasta privada de Kamila no disk2 - autenticação exclusiva)
+- `smb://192.168.0.8/Fotos` (Fotos e Vídeos originais do Immich no disk2 - Paulo e Kamila)
 - Entre com o usuário `paulo` (ou `kamila`) e a senha definida. Ambos têm permissão completa de criação, edição e exclusão de arquivos.
 
 > [!NOTE]

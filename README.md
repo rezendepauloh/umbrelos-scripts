@@ -25,7 +25,7 @@
    - [Jellyfin (Quick Sync) + Stack Arr + qBittorrent](#jellyfin-quick-sync--stack-arr--qbittorrent)
    - [Home Assistant e Dispositivos Inteligentes](#home-assistant-e-dispositivos-inteligentes)
    - [Compartilhamentos Samba na Rede Local (Windows / Linux / Smart TVs)](#compartilhamentos-samba-na-rede-local-windows--linux--smart-tvs)
-   - [Acesso Remoto Seguro (Tailscale) e Bloqueio de Anúncios (AdGuard Home)](#acesso-remoto-seguro-tailscale-e-bloqueio-de-anúncios-adguard-home)
+   - [Acesso Remoto Seguro (Tailscale & zrok) e Bloqueio de Anúncios (AdGuard Home)](#acesso-remoto-seguro-tailscale--zrok-e-bloqueio-de-anúncios-adguard-home)
 5. [Gerenciamento e Monitoramento (Dockge, Uptime Kuma, IT-Tools)](#-gerenciamento-e-monitoramento)
 6. [Blindagem Contra Falhas de Energia (Crash-Resilience Sem Nobreak)](#-blindagem-contra-falhas-de-energia)
 7. [🧪 Suíte Unificada de Testes e Integridade](#-suíte-unificada-de-testes-e-integridade)
@@ -63,7 +63,7 @@ O **Blackview MP100 Pro** foi projetado com especificações ideais para homelab
 |  ├── disk2 (/home/umbrel/umbrel/external/disk2 - 1TB A-DATA):                  |
 |  │   ├── users/ (paulo, kamila) -> Samba Pessoal & Nextcloud "Meus Arquivos"   |
 |  │   ├── shared/                -> Samba & Nextcloud "Compartilhado"            |
-|  │   └── immich/library/        -> Fotos & Vídeos Familiares                    |
+|  │   └── immich/upload/         -> Fotos & Vídeos (Samba [Fotos] e Immich)      |
 |  └── disk3 (/home/umbrel/umbrel/external/disk3 - 1TB Samsung):                 |
 |      └── backups/               -> Backups locais de contingência               |
 |                                                                                |
@@ -237,7 +237,7 @@ Acesse a **App Store** dentro do painel web do Umbrel e instale:
  
 > 🛡️ **Arquitetura de Armazenamento Nativa e Direta (3 HDs de 1TB = 3TB)**:
 > - **HD 1 (`disk1` - 1TB ext4 Seagate)**: Mídia & Downloads (Jellyfin, Radarr, Sonarr, qBittorrent).
-> - **HD 2 (`disk2` - 1TB ext4 A-DATA)**: Nuvem & Usuários (Nextcloud "Meus Arquivos", "Compartilhado", Samba, Immich).
+> - **HD 2 (`disk2` - 1TB ext4 A-DATA)**: Nuvem & Usuários (Nextcloud "Meus Arquivos", "Compartilhado", Samba `[Paulo]`, `[Kamila]`, `[Compartilhado]`, `[Fotos]`, Immich).
 > - **HD 3 (`disk3` - 1TB ext4 Samsung)**: Backups Locais e contingência.
 > - **Backup Externo (Regra 3-2-1)**: Rotina diária inteligente enviando para o Desktop Pop!_OS com retenção de 7 dias.
 
@@ -386,7 +386,7 @@ O script configura automaticamente os seguintes compartilhamentos no arquivo `/e
 
 ---
 
-### Acesso Remoto Seguro (Tailscale) e Bloqueio de Anúncios (AdGuard Home)
+### Acesso Remoto Seguro (Tailscale & zrok) e Bloqueio de Anúncios (AdGuard Home)
 
 1. **Tailscale (VPN Mesh)**:
    - Para acessar seu Jellyfin, Immich e arquivos fora de casa sem precisar abrir portas perigosas no seu roteador (especialmente útil em conexões CGNAT):
@@ -399,6 +399,11 @@ O script configura automaticamente os seguintes compartilhamentos no arquivo `/e
    - Atue como servidor DNS da sua rede doméstica.
    - Bloqueia anúncios, telemetria invasiva e malwares antes mesmo de chegarem na sua Smart TV, computadores e celulares.
    - Fornece o recurso de **DNS Rewrites** (`*.pk.local`) para navegação por nomes amigáveis.
+3. **zrok v2 (Acesso Remoto Externo com Custo Zero & Bypass de Firewalls)**:
+   - Permite acessar serviços internos do homelab (como **Karteman**, **Jellyfin**, **Nextcloud**, **Verifica Diários** e **Investimentos**) a partir de qualquer rede externa ou corporativa restritiva (como firewalls corporativos que bloqueiam portas WireGuard/Tailscale).
+   - Não requer compra de domínio próprio nem abertura de portas no roteador (NAT Traversal via TLS outbound).
+   - Inclui proteção prévia por senha (`Basic Auth`) para serviços sem tela de login nativa.
+   - Detalhes da arquitetura, stack `compose/tunnels` e URLs fixas ativas em [Docs/zrok_acesso_remoto.md](Docs/zrok_acesso_remoto.md).
 
 ---
 
@@ -524,7 +529,7 @@ umbrelos-scripts/
 │   ├── iptv/                  # Lista de canais curados (canais_brasil.m3u)
 │   ├── samba/                 # Configuração do Samba (smb.conf)
 │   └── ...
-├── compose/                   # Stacks Docker Compose (arr-stack, management, betor, etc.)
+├── compose/                   # Stacks Docker Compose (arr-stack, management, tunnels, betor, etc.)
 ├── Docs/                      # Guias detalhados de arquitetura, testes e rotinas
 │   ├── zrok_acesso_remoto.md                 # Guia de acesso remoto fixo gratuito com zrok v2 (Zero-Trust)
 │   ├── instalacao_certificado_ssl_homelab.md # Guia de instalação da CA em clientes

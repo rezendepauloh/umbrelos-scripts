@@ -27,15 +27,15 @@ services:
       - DOZZLE_LEVEL=info
       - DOZZLE_REMOTE_AGENT=${POPOS_HOST:-127.0.0.1}:7007?name=pop-os
 
-  # Uptime Kuma - Painel de monitoramento visual de serviços internos e externos
-  uptime-kuma:
-    image: louislam/uptime-kuma:latest
-    container_name: uptime-kuma
-    restart: unless-stopped
-    ports:
-      - "${UPTIME_KUMA_PORT:-3001}:3001"
-    volumes:
-      - ./data/uptime-kuma:/app/data
+  # (Desativado) Uptime Kuma - Painel de monitoramento visual de serviços internos e externos
+  # uptime-kuma:
+  #   image: louislam/uptime-kuma:latest
+  #   container_name: uptime-kuma
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${UPTIME_KUMA_PORT:-3001}:3001"
+  #   volumes:
+  #     - ./data/uptime-kuma:/app/data
 
   # IT-Tools - Suíte prática de ferramentas para desenvolvedores e sysadmins
   it-tools:
