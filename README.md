@@ -299,7 +299,7 @@ rsync -avzP --exclude '.git' ~/Documentos/DevProjects/Bash/umbrelos-scripts umbr
 
 ### Fase 7: Configuração dos Domínios Amigáveis Locais (`*.pk.local`)
 
-> 📖 Consulte o guia detalhado em: [Docs/dns_dominios_locais_npm.md](Docs/dns_dominios_locais_npm.md).
+> 📖 Consulte o guia detalhado em: [Docs/arquitetura/dns_dominios_locais_npm.md](Docs/arquitetura/dns_dominios_locais_npm.md).
 
 Para nunca mais precisar digitar números de portas (ex: `:8085`, `:8989`), você configura em apenas 2 passos:
 
@@ -394,7 +394,7 @@ O script configura automaticamente os seguintes compartilhamentos no arquivo `/e
      sudo tailscale up
      ```
    - Conecte seus celulares e o PopOS na mesma conta Tailscale. Você terá um IP seguro (ex: `100.x.y.z`) acessível de qualquer lugar do mundo.
-   - **Nextcloud via Tailscale:** O Nextcloud já está configurado com `trusted_domains` e `trusted_proxies` aceitando requisições diretas via IP Tailscale e MagicDNS sem erros de domínio não confiável (detalhes em [Docs/pos_instalacao_portas_e_testes.md](Docs/pos_instalacao_portas_e_testes.md)).
+   - **Nextcloud via Tailscale:** O Nextcloud já está configurado com `trusted_domains` e `trusted_proxies` aceitando requisições diretas via IP Tailscale e MagicDNS sem erros de domínio não confiável (detalhes em [Docs/guias/pos_instalacao_portas_e_testes.md](Docs/guias/pos_instalacao_portas_e_testes.md)).
 2. **AdGuard Home** (Pela App Store do umbrelOS):
    - Atue como servidor DNS da sua rede doméstica.
    - Bloqueia anúncios, telemetria invasiva e malwares antes mesmo de chegarem na sua Smart TV, computadores e celulares.
@@ -403,7 +403,7 @@ O script configura automaticamente os seguintes compartilhamentos no arquivo `/e
    - Permite acessar serviços internos do homelab (como **Karteman**, **Jellyfin**, **Nextcloud**, **Verifica Diários** e **Investimentos**) a partir de qualquer rede externa ou corporativa restritiva (como firewalls corporativos que bloqueiam portas WireGuard/Tailscale).
    - Não requer compra de domínio próprio nem abertura de portas no roteador (NAT Traversal via TLS outbound).
    - Inclui proteção prévia por senha (`Basic Auth`) para serviços sem tela de login nativa.
-   - Detalhes da arquitetura, stack `compose/tunnels` e URLs fixas ativas em [Docs/zrok_acesso_remoto.md](Docs/zrok_acesso_remoto.md).
+   - Detalhes da arquitetura, stack `compose/tunnels` e URLs fixas ativas em [Docs/arquitetura/zrok_acesso_remoto.md](Docs/arquitetura/zrok_acesso_remoto.md).
 
 ---
 
@@ -420,13 +420,13 @@ O script configura automaticamente os seguintes compartilhamentos no arquivo `/e
 - **IT-Tools (`http://umbrel.local:8080`)**:
   Caixa de ferramentas prática (conversores JSON, geradores de hash, decodificadores de certificados, regex tester, etc.).
 
-> 📖 **Guia Passo a Passo de Domínios Locais**: Consulte [Docs/dns_dominios_locais_npm.md](Docs/dns_dominios_locais_npm.md) para a tabela completa de domínios `*.pk.local` e como ativar via AdGuard Home.
+> 📖 **Guia Passo a Passo de Domínios Locais**: Consulte [Docs/arquitetura/dns_dominios_locais_npm.md](Docs/arquitetura/dns_dominios_locais_npm.md) para a tabela completa de domínios `*.pk.local` e como ativar via AdGuard Home.
 
 ---
 
 ## 🛡️ Blindagem Contra Falhas de Energia (Crash-Resilience Sem Nobreak)
 
-> 📖 Para entender a fundo o funcionamento dessas proteções, veja: [Docs/blindagem_falhas_energia.md](Docs/blindagem_falhas_energia.md).
+> 📖 Para entender a fundo o funcionamento dessas proteções, veja: [Docs/arquitetura/blindagem_falhas_energia.md](Docs/arquitetura/blindagem_falhas_energia.md).
 
 Como o Homelab ainda não possui um nobreak dedicado, o sistema foi blindado via software para minimizar qualquer risco de corrupção caso ocorra corte repentino de energia:
 
@@ -446,7 +446,7 @@ Como o Homelab ainda não possui um nobreak dedicado, o sistema foi blindado via
 
 O projeto conta com uma suíte completa de testes de integração e saúde em **Bash Nativo** (inspirada na arquitetura visual do *Sistema Karteman*), permitindo auditar o homelab tanto a partir do seu desktop pessoal quanto diretamente do mini PC.
 
-> 📖 **Documentação Completa da Suíte**: Veja detalhes técnicos e opções de execução em [Docs/suite_de_testes_e_integridade.md](Docs/suite_de_testes_e_integridade.md).
+> 📖 **Documentação Completa da Suíte**: Veja detalhes técnicos e opções de execução em [Docs/testes/suite_de_testes_e_integridade.md](Docs/testes/suite_de_testes_e_integridade.md).
 
 ### Como Executar os Testes:
 
@@ -469,8 +469,8 @@ ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "/home/umbrel/umbrelos-scripts/tests
 
 ## 🚪 Tabela de Portas e Serviços
 
-> 📖 **Guia Completo de Pós-Instalação, Credenciais e Testes**: Acesse [Docs/pos_instalacao_portas_e_testes.md](Docs/pos_instalacao_portas_e_testes.md) para detalhes de usuários, primeiro login, senha do qBittorrent e testes passo a passo.
-> 📖 **Deploy de Projetos Dev**: Acesse [Docs/deploy_projetos_dev_coolify_npm.md](Docs/deploy_projetos_dev_coolify_npm.md) para organizar projetos Python (Streamlit), Node.js e Coolify.
+> 📖 **Guia Completo de Pós-Instalação, Credenciais e Testes**: Acesse [Docs/guias/pos_instalacao_portas_e_testes.md](Docs/guias/pos_instalacao_portas_e_testes.md) para detalhes de usuários, primeiro login, senha do qBittorrent e testes passo a passo.
+> 📖 **Deploy de Projetos Dev**: Acesse [Docs/guias/deploy_projetos_dev_coolify_npm.md](Docs/guias/deploy_projetos_dev_coolify_npm.md) para organizar projetos Python (Streamlit), Node.js e Coolify.
 
 | Serviço | Porta Padrão | Protocolo | Função |
 | :--- | :---: | :---: | :--- |
