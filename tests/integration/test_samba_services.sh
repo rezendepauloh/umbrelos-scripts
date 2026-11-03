@@ -4,7 +4,7 @@
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/test_framework.sh"
+source "${SCRIPT_DIR}/../test_framework.sh"
 
 start_suite "Serviços e Compartilhamentos Samba" "Validação de daemons, blindagem chattr +i e shares"
 

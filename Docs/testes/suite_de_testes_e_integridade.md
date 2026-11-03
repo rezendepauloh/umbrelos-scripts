@@ -1,8 +1,11 @@
 # 🧪 Suíte Unificada de Testes e Integridade (Homelab umbrelOS)
 
-Este documento descreve a arquitetura, estrutura e o guia completo de execução da **Suíte de Testes e Integridade** desenvolvida em **Bash Nativo** para o Homelab umbrelOS.
+Este documento descreve a arquitetura, estrutura e o guia completo de execução da **Suíte de Testes Automatizada** do Homelab umbrelOS.
 
-Inspirada no modelo adotado no projeto *Sistema Karteman*, a suíte oferece relatórios no terminal com formatação rica em cores ANSI (`✔ PASS`, `✖ FAIL`, `⚡ SKIP`), cálculo de tempo de execução e contadores de cobertura.
+Seguindo o mesmo padrão arquitetural dos nossos projetos **Pop!_OS Workstation Setup**, **Espanso STI** e **Paulo Investimentos**, a suíte foi reformulada para oferecer:
+1. **Testes Unitários Locais:** Validação estática e sintática instantânea dos scripts Bash (`bash -n`), permissões de execução (`+x`), arquivos Docker Compose e templates de configuração, sem precisar de rede ou tocar no servidor.
+2. **Testes de Integração Remota:** Auditoria de infraestrutura no mini PC (`192.168.0.8`) cobrindo discos físicos, Samba, daemons de persistência, containers Docker, portas HTTP, túneis públicos zrok v2 e VPN Tailscale.
+3. **Runners Flexíveis:** Suporte tanto a runner moderno em Python (`run_all.py` com estatísticas ANSI detalhadas em milissegundos) quanto a wrapper executável em Bash (`run_all.sh`).
 
 ---
 
@@ -13,77 +16,82 @@ Garantir validações automatizadas de ponta a ponta sem intervenção manual ap
 2. Atualizações de sistema do umbrelOS ou pacotes do Debian.
 3. Criação ou atualização de stacks no Dockge.
 4. Manutenções nas conexões USB e cabos dos HDs externos.
+5. Edições em scripts de infraestrutura ou adições de novas variáveis/stacks.
 
 ---
 
-## 🏗️ Arquitetura e Módulos
+## 🏗️ Arquitetura e Estrutura de Diretórios
 
-A suíte está organizada no diretório [`tests/`](../tests) e é dividida em módulos independentes:
+A suíte está organizada no diretório [`tests/`](../../tests) com separação estrita entre testes unitários e de integração:
 
 ```text
-umbrelos-scripts/
-├── tests/
-│   ├── run_all.sh                 # Runner unificado com seletor de módulos e relatório final
-│   ├── test_framework.sh          # Motor de asserções, cores ANSI e alternância local/remoto
-│   ├── test_storage_and_mounts.sh # Testes de UUIDs de hardware, montagens e ausência de duplicatas
-│   ├── test_samba_services.sh     # Testes de daemons (smbd/nmbd/wsdd2), chattr +i e shares
-│   ├── test_docker_stacks.sh      # Testes da homelab_network e status dos 40+ containers
-│   └── test_http_endpoints.sh     # Testes de códigos HTTP nas portas das aplicações web
+tests/
+├── run_all.py                      # Runner unificado Python com formatação ANSI, tempos e estatísticas
+├── run_all.sh                      # Wrapper executável Bash inteligente com detecção de flags
+├── README.md                       # Documentação técnica rápida de execução
+├── test_framework.sh               # Biblioteca core de asserções Bash e comandos remotos via SSH
+│
+├── unit/                           # 🔧 TESTES UNITÁRIOS LOCAIS (Pop!_OS / Zero efeito colateral)
+│   ├── test_syntax.py              # Valida 'bash -n' em scripts, YAML do Compose e permissões (+x)
+│   └── test_config_consistency.py  # Valida consistência de config.env.example, UUIDs e ausência de senhas
+│
+└── integration/                    # 🚀 TESTES DE INTEGRAÇÃO REMOTA (Mini PC 192.168.0.8 via SSH)
+    ├── test_homelab_integration.py # Ponte Python para orquestrar os testes de infraestrutura
+    ├── test_storage_and_mounts.sh  # Testes de UUIDs de hardware, montagens e ausência de duplicatas
+    ├── test_samba_services.sh      # Testes de daemons (smbd/nmbd/wsdd2), chattr +i e shares SMB
+    ├── test_docker_stacks.sh       # Testes da homelab_network e status dos containers
+    ├── test_http_endpoints.sh      # Testes de códigos HTTP nas portas das aplicações web
+    └── test_remote_tunnels.sh      # Testes dos túneis públicos zrok v2 e VPN Tailscale
 ```
 
-### O Que Cada Módulo Valida:
+---
 
-| Módulo | Escopo de Validação | Asserções Principais |
+## 📋 O Que Cada Módulo Valida
+
+| Módulo / Camada | Arquivo | Escopo de Validação |
 | :--- | :--- | :--- |
-| **`storage`** | Armazenamento & Discos | Montagem de `disk1`, `disk2`, `disk3`; correspondência exata dos UUIDs de hardware (`fc0b5d7b-...` e `490440f1-...`); ausência de pontos duplicados fantasmas `*(2)`; bind mount nativo do Jellyfin em `/home/Downloads/media`. |
-| **`samba`** | Compartilhamentos de Rede | Status `active` para `smbd`, `nmbd` e `wsdd2`; blindagem imutável do kernel (`chattr +i` no `/etc/samba/smb.conf`); listagem e conexão real nas shares `[Compartilhado]` e `[Midia]` via `smbclient`. |
-| **`docker`** | Containers & Redes | Presença da rede Docker `homelab_network`; status `running` para Dockge, Dozzle, qBittorrent, Prowlarr, Karteman, Evolution API, BeTor, Diários Oficiais, Investimentos, Jellyfin, Nextcloud, Immich e AdGuard. |
-| **`http`** | Aplicações Web | Respostas HTTP válidas (`200`, `302` ou `307`) em 13 portas de rede locais (`:5001`, `:8888`, `:8085`, `:9696`, `:8091`, `:8092`, `:8093`, `:8094`, `:8096`, `:8081`, `:81`, `:8080`, `:8384`). |
+| **Unitários: Sintaxe** | `unit/test_syntax.py` | Valida sintaxe de todos os scripts `.sh` via `bash -n`, verifica permissão de execução (`+x`), shebangs e integridade sintática dos arquivos `docker-compose.yml`. |
+| **Unitários: Configs** | `unit/test_config_consistency.py` | Valida variáveis obrigatórias no `config.env.example`, confere UUIDs de hardware contra o `AGENTS.md` e bloqueia senhas reais expostas em arquivos commitáveis. |
+| **Integração: Storage** | `integration/test_storage_and_mounts.sh` | Montagem de `disk1`, `disk2`, `disk3`; correspondência exata dos UUIDs de hardware (`fc0b5d7b-...` e `490440f1-...`); ausência de montagens duplicadas `*(2)`; bind mount nativo do Jellyfin em `/home/Downloads/media`. |
+| **Integração: Samba** | `integration/test_samba_services.sh` | Status `active` para `smbd`, `nmbd` e `wsdd2`; blindagem imutável do kernel (`chattr +i` no `/etc/samba/smb.conf`); listagem e conexão real nas shares `[Compartilhado]` e `[Midia]` via `smbclient`. |
+| **Integração: Docker** | `integration/test_docker_stacks.sh` | Presença da rede Docker `homelab_network`; status `running` para Dockge, Dozzle, qBittorrent, Prowlarr, Jackett, Radarr, Sonarr, Jellyseerr, Bazarr, Karteman, Evolution API, BeTor, Diários Oficiais, Investimentos, Jellyfin, Nextcloud, Immich, Tailscale e AdGuard. |
+| **Integração: HTTP** | `integration/test_http_endpoints.sh` | Respostas HTTP válidas (`200`, `301`, `302`, `307`) em 19 portas de serviços locais (`:5001`, `:8888`, `:8085`, `:9696`, `:9117`, `:7878`, `:8989`, `:5055`, `:6767`, `:8123`, `:8091`, `:8092`, `:8093`, `:8094`, `:8096`, `:8081`, `:81`, `:8080`, `:8384`). |
+| **Integração: Túneis** | `integration/test_remote_tunnels.sh` | Resposta online e código HTTP válido para os 6 túneis zrok v2 (`umbrel-paulo`, `cloud-paulo`, `jellyfin-paulo`, `karteman-paulo`, `diarios-paulo`, `investimentos-paulo`) e conectividade da VPN Tailscale (`100.88.159.41`). |
 
 ---
 
 ## 🚀 Como Executar os Testes
 
-A suíte possui **detecção automática de ambiente**: ela identifica dinamicamente se está sendo executada a partir do seu computador pessoal (via SSH) ou de dentro do próprio mini PC.
+A suíte possui **detecção automática de ambiente**: identifica se está sendo executada a partir do Pop!_OS (disparando comandos remotos via SSH autenticado por chave) ou diretamente dentro do terminal do mini PC.
 
-### 💻 Opção 1: Executando a Partir do seu Computador (Pop!_OS)
-
-Abra o terminal no repositório local e execute:
-
+### 💻 1. Executar Apenas Testes Unitários de Código (Local e Instantâneo)
+Ideal para verificar rapidamente se novos scripts foram criados com sintaxe válida e permissões corretas, sem depender de rede ou de conexão ao mini PC (executa em ~50ms):
 ```bash
-cd ~/Documentos/DevProjects/Bash/umbrelos-scripts
-
-# 1. Executar a suíte completa de ponta a ponta (Recomendado)
-./tests/run_all.sh
-
-# 2. Executar apenas um módulo específico:
-./tests/run_all.sh storage   # Apenas discos e montagens
-./tests/run_all.sh samba     # Apenas serviços e shares Samba
-./tests/run_all.sh docker    # Apenas containers Docker
-./tests/run_all.sh http      # Apenas endpoints e portas web
+./tests/run_all.sh --unit
+# ou via Python diretamente:
+python3 tests/run_all.py --unit
 ```
 
-> **Nota:** A execução remota utiliza a sua chave SSH configurada em `~/.ssh/id_ed25519` apontando para o IP do mini PC (`192.168.0.8`).
-
----
-
-### 🖥️ Opção 2: Executando Diretamente no Mini PC (SSH)
-
-Você também pode rodar a suíte diretamente no terminal do servidor:
-
+### 🖥️ 2. Executar Apenas Testes de Integração no Servidor (Remoto)
+Conecta via SSH ao mini PC (`192.168.0.8`), executa checagens com privilégios adequados e audita periféricos, discos, containers, portas e túneis:
 ```bash
-# Conectar via SSH ao mini PC
-ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8
-
-# Acessar a pasta e rodar
-cd ~/umbrelos-scripts
-./tests/run_all.sh
+./tests/run_all.sh --integration
+# ou via Python diretamente:
+python3 tests/run_all.py --integration
 ```
 
-Ou em um único comando remoto:
-
+### ⚡ 3. Executar a Suíte Completa de Ponta a Ponta (Recomendado)
+Executa a bateria unitária local e, em seguida, a bateria remota completa:
 ```bash
-ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "/home/umbrel/umbrelos-scripts/tests/run_all.sh"
+./tests/run_all.sh
+# ou:
+python3 tests/run_all.py
+```
+
+### 🐚 4. Executar no Modo Puramente Bash
+Caso esteja diretamente no servidor e queira rodar apenas os scripts `.sh` sem acionar o interpretador Python:
+```bash
+./tests/run_all.sh --bash
 ```
 
 ---
@@ -91,78 +99,54 @@ ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "/home/umbrel/umbrelos-scripts/tests
 ## 📊 Exemplo da Saída de Execução
 
 ```text
-========================================================================
-🚀 SUÍTE DE TESTES E INTEGRIDADE — HOMELAB UMBRELOS
-Ambiente de Execução: REMOTO (Pop!_OS → 192.168.0.8)
-========================================================================
+╔═══════════════════════════════════════════════════════════════╗
+║     UMBRELOS SCRIPTS & HOMELAB — SUÍTE DE TESTES AUTOMATIZADA ║
+╚═══════════════════════════════════════════════════════════════╝
 
-▶ Executando Suíte: Armazenamento Físico e Montagens (Validação de UUIDs, ausência de duplicatas e bind mounts)
- ✔ PASS Ponto de montagem disk1 (Mídia & Downloads) (ext4 Seagate 1TB)
- ✔ PASS Ponto de montagem disk2 (Nuvem & Usuários) (ext4 A-DATA 1TB)
- ✔ PASS Ponto de montagem disk3 (Backups Locais) (ext4 Samsung 1TB)
- ✔ PASS UUID de hardware do disk1 confere (fc0b5d7b-1706-4461-9e1e-9d3f61e7bab0)
- ✔ PASS UUID de hardware do disk2 confere (490440f1-8f2e-41fd-bc27-00632adec790)
- ✔ PASS Inexistência de montagens duplicadas com *(2) (Limpo)
- ✔ PASS Bind mount nativo do Jellyfin (/external/disk1/media -> Downloads/media) (Ativo)
+▶ Executando Suíte: 🔧 Unitários: Sintaxe Bash, Compose YAML & Consistência de Configurações (/home/rezendepauloh/Documentos/DevProjects/Bash/umbrelos-scripts/tests/unit)
+─────────────────────────────────────────────────────────────────
+ ✔ PASS test_config_consistency.TestConfigAndArchitectureConsistency.test_01_config_example_contains_all_required_variables
+ ✔ PASS test_config_consistency.TestConfigAndArchitectureConsistency.test_02_agents_md_has_canonical_uuids
+ ✔ PASS test_config_consistency.TestConfigAndArchitectureConsistency.test_03_no_exposed_passwords_in_tracked_examples
+ ✔ PASS test_syntax.TestBashSyntaxAndPermissions.test_01_all_bash_scripts_syntax_valid
+ ✔ PASS test_syntax.TestBashSyntaxAndPermissions.test_02_all_scripts_have_shebang_and_permissions
+ ✔ PASS test_syntax.TestBashSyntaxAndPermissions.test_03_docker_compose_files_valid_yaml
+─────────────────────────────────────────────────────────────────
+⏱ Tempo: 49.4ms | Rodados: 6 | Falhas: 0 | Erros: 0
 
-▶ Executando Suíte: Serviços e Compartilhamentos Samba (Validação de daemons, blindagem chattr +i e shares)
- ✔ PASS Serviço smbd (Samba SMB Daemon) (active)
- ✔ PASS Serviço nmbd (Samba NetBIOS Name Server) (active)
- ✔ PASS Serviço wsdd2 (WSD/LLMNR Discovery) (active)
- ✔ PASS Blindagem imutável do smb.conf (chattr +i) (Imutável contra sobrescrita do umbreld)
- ✔ PASS Conexão e listagem de share [Compartilhado] (//192.168.0.8/Compartilhado)
- ✔ PASS Conexão e listagem de share [Midia] (//192.168.0.8/Midia)
+▶ Executando Suíte: 🚀 Integração Remota: Storage, Samba, Docker, HTTP & Túneis zrok/Tailscale (/home/rezendepauloh/Documentos/DevProjects/Bash/umbrelos-scripts/tests/integration)
+─────────────────────────────────────────────────────────────────
+ ✔ PASS test_homelab_integration.TestHomelabIntegration.test_01_storage_and_mounts
+ ✔ PASS test_homelab_integration.TestHomelabIntegration.test_02_samba_services_and_shares
+ ✔ PASS test_homelab_integration.TestHomelabIntegration.test_03_docker_stacks_and_containers
+ ✔ PASS test_homelab_integration.TestHomelabIntegration.test_04_http_endpoints_and_web_uis
+ ✔ PASS test_homelab_integration.TestHomelabIntegration.test_05_remote_tunnels_and_tailscale
+─────────────────────────────────────────────────────────────────
+⏱ Tempo: 31101.0ms | Rodados: 5 | Falhas: 0 | Erros: 0
 
-▶ Executando Suíte: Containers e Stacks Docker (Validação de integridade dos 40+ containers)
- ✔ PASS Rede compartilhada homelab_network (presente)
- ✔ PASS Container dockge (Gerenciador de Stacks - running)
- ✔ PASS Container dozzle (Visualizador de Logs - running)
- ✔ PASS Container qbittorrent (Cliente BitTorrent - running)
- ✔ PASS Container prowlarr (Gerenciador de Indexadores - running)
- ✔ PASS Container karteman-app (Sistema Karteman App - running)
- ✔ PASS Container karteman-evolution-api (Evolution API WhatsApp - running)
- ✔ PASS Container betor-api (Buscador Nacional BeTor - running)
- ✔ PASS Container betor-scrapyd (Crawler BeTor - running)
- ✔ PASS Container verifica-diarios-app (Verificador Diários Oficiais - running)
- ✔ PASS Container paulo-investimentos-app (Investimentos Pessoais - running)
- ✔ PASS Container jellyfin_server_1 (Jellyfin Media Server - running)
- ✔ PASS Container nextcloud_web_1 (Nextcloud Hub - running)
- ✔ PASS Container immich_server_1 (Immich Photo Backup - running)
- ✔ PASS Container adguard-home_server_1 (AdGuard Home DNS - running)
-
-▶ Executando Suíte: Endpoints HTTP e Portas de Rede (Validação de disponibilidade das aplicações web)
- ✔ PASS Dockge Web UI (:5001) (HTTP 200)
- ✔ PASS Dozzle Log Viewer (:8888) (HTTP 307)
- ✔ PASS qBittorrent Web UI (:8085) (HTTP 200)
- ✔ PASS Prowlarr Indexer Manager (:9696) (HTTP 302)
- ✔ PASS Sistema Karteman App (:8091) (HTTP 302)
- ✔ PASS Evolution API (:8092) (HTTP 200)
- ✔ PASS Verificador Diários Oficiais (:8093) (HTTP 200)
- ✔ PASS Paulo Investimentos Pessoais (:8094) (HTTP 200)
- ✔ PASS Jellyfin Media Server (:8096) (HTTP 302)
- ✔ PASS Nextcloud Hub (:8081) (HTTP 302)
- ✔ PASS Nginx Proxy Manager (:81) (HTTP 200)
- ✔ PASS IT-Tools (:8080) (HTTP 200)
- ✔ PASS Syncthing (:8384) (HTTP 200)
-
-========================================================================
-✔ SUCESSO: Todos os testes passaram!
-Total: 41 | Passou: 41 | Falhas: 0 | Ignorados: 0 | Tempo: 8.89s
-========================================================================
+═════════════════════════════════════════════════════════════════
+ ✔ SUCESSO: Todos os testes passaram perfeitamente!
+ Total: 11 |  Passou: 11 |  Falhas: 0 |  Erros: 0 |  Ignorados: 0 |  Tempo Total: 31.15s
+═════════════════════════════════════════════════════════════════
 ```
 
 ---
 
 ## 🛠️ Manutenção e Adição de Novos Testes
 
-Para adicionar a validação de uma nova aplicação ou serviço recém-instalado:
+Para adicionar a validação de um novo serviço, aplicação ou túnel recém-adicionado:
 
-1. **Novo Container Docker:** Abra [`tests/test_docker_stacks.sh`](../tests/test_docker_stacks.sh) e adicione:
+1. **Novo Container Docker:** Abra [`tests/integration/test_docker_stacks.sh`](../../tests/integration/test_docker_stacks.sh) e adicione:
    ```bash
    check_container "nome-do-novo-container" "Descrição do Serviço"
    ```
-2. **Nova Porta / Endpoint Web:** Abra [`tests/test_http_endpoints.sh`](../tests/test_http_endpoints.sh) e adicione:
+2. **Nova Porta / Endpoint Web:** Abra [`tests/integration/test_http_endpoints.sh`](../../tests/integration/test_http_endpoints.sh) e adicione:
    ```bash
    assert_http_status "Nome da Aplicação (:PORTA)" "http://${HOST_IP}:PORTA" "200|302"
    ```
-3. Execute `./tests/run_all.sh` para verificar a integração.
+3. **Novo Túnel zrok v2:** Abra [`tests/integration/test_remote_tunnels.sh`](../../tests/integration/test_remote_tunnels.sh) e adicione:
+   ```bash
+   test_tunnel "Nome do Túnel" "https://subdominio.shares.zrok.io" "usuario:senha"
+   ```
+4. **Novas Variáveis de Configuração:** Adicione a variável na lista `required_vars` em [`tests/unit/test_config_consistency.py`](../../tests/unit/test_config_consistency.py).
+5. Execute `./tests/run_all.sh` para confirmar que tudo passa com 100% de sucesso.

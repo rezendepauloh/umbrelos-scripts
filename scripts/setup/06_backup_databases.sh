@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# scripts/06_backup_databases.sh - Rotina Automatizada de Backup de Bancos de Dados
+# scripts/setup/06_backup_databases.sh - Rotina Automatizada de Backup de Bancos de Dados
 # ==============================================================================
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 [[ -f "${SCRIPT_DIR}/lib/common.sh" ]] && source "${SCRIPT_DIR}/lib/common.sh"
 [[ -f "${SCRIPT_DIR}/config.env" ]] && source "${SCRIPT_DIR}/config.env"
 

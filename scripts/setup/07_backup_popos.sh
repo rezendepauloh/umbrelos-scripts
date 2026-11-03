@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# scripts/06_backup_popos.sh
+# scripts/setup/07_backup_popos.sh
 # ------------------------------------------------------------------------------
 # Rotina de Backup Automatizado do Homelab para o Desktop Pop!_OS
 # Local de instalação no servidor: /data/bin/backup-para-popos.sh
@@ -19,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 [[ -f "${SCRIPT_DIR}/config.env" ]] && source "${SCRIPT_DIR}/config.env"
 [[ -f "/data/config.env" ]] && source "/data/config.env"
 
-log_step "Módulo 6: Instalação do Backup Remoto Inteligente para Pop!_OS"
+log_step "Módulo 7: Instalação do Backup Remoto Inteligente para Pop!_OS"
 
 TARGET_SCRIPT="/data/bin/backup-para-popos.sh"
 mkdir -p /data/bin

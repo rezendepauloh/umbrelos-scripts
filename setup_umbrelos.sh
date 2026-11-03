@@ -44,7 +44,8 @@ show_menu() {
     echo "4) Módulo 3: Configuração do Servidor Samba"
     echo "5) Módulo 4: Subir Stacks Docker Complementares (Dockge, Arr, etc.)"
     echo "6) Módulo 5: Segurança, SSH e Tailscale"
-    echo "7) Módulo 6: Blindagem Contra Queda de Energia e Backup de Bancos"
+    echo "7) Módulo 6: Backup Local de Bancos de Dados"
+    echo "8) Módulo 7: Backup Remoto Inteligente para Pop!_OS"
     echo "0) Sair"
     echo ""
     read -rp "Opção [1]: " OPTION
@@ -72,7 +73,11 @@ run_module_5() {
 }
 
 run_module_6() {
-    source "${SCRIPT_DIR}/scripts/setup/06_backup_popos.sh"
+    source "${SCRIPT_DIR}/scripts/setup/06_backup_databases.sh"
+}
+
+run_module_7() {
+    source "${SCRIPT_DIR}/scripts/setup/07_backup_popos.sh"
 }
 
 run_all() {
@@ -81,7 +86,8 @@ run_all() {
     if [[ "${ENABLE_SAMBA_SETUP:-true}" == "true" ]]; then run_module_3; fi
     if [[ "${ENABLE_DOCKER_STACKS:-true}" == "true" ]]; then run_module_4; fi
     if [[ "${ENABLE_SECURITY_HARDENING:-true}" == "true" ]]; then run_module_5; fi
-    if [[ "${ENABLE_CRASH_RESILIENCE:-true}" == "true" ]]; then run_module_6; fi
+    if [[ "${ENABLE_DATABASE_BACKUP:-true}" == "true" ]]; then run_module_6; fi
+    if [[ "${ENABLE_POPOS_BACKUP:-false}" == "true" ]]; then run_module_7; fi
     
     echo ""
     echo -e "${BOLD}${GREEN}================================================================================${NC}"
@@ -115,6 +121,8 @@ else
         4) run_module_3 ;;
         5) run_module_4 ;;
         6) run_module_5 ;;
+        7) run_module_6 ;;
+        8) run_module_7 ;;
         0) exit 0 ;;
         *) log_error "Opção inválida."; exit 1 ;;
     esac

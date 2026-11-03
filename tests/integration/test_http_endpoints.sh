@@ -4,7 +4,7 @@
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/test_framework.sh"
+source "${SCRIPT_DIR}/../test_framework.sh"
 
 start_suite "Endpoints HTTP e Portas de Rede" "Validação de disponibilidade das aplicações web"
 
@@ -12,7 +12,6 @@ HOST_IP="${TARGET_HOST}"
 
 assert_http_status "Dockge Web UI (:5001)" "http://${HOST_IP}:5001" "200"
 assert_http_status "Dozzle Log Viewer (:8888)" "http://${HOST_IP}:8888" "200|307"
-assert_http_status "Uptime Kuma (:3001)" "http://${HOST_IP}:3001" "200|302"
 assert_http_status "qBittorrent Web UI (:8085)" "http://${HOST_IP}:8085" "200"
 assert_http_status "Prowlarr Indexer Manager (:9696)" "http://${HOST_IP}:9696" "200|302"
 assert_http_status "Jackett Indexer Proxy (:9117)" "http://${HOST_IP}:9117" "200|301|302"

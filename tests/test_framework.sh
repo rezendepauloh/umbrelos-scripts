@@ -34,7 +34,18 @@ run_target_cmd() {
     if [ "$IS_LOCAL_HOST" = true ]; then
         eval "$cmd"
     else
-        ssh -i "$SSH_KEY" -o ConnectTimeout=5 -o StrictHostKeyChecking=no "${SSH_USER}@${TARGET_HOST}" "$cmd"
+        # Se for um comando que usa sudo, garantimos que execute com a SYSTEM_PASSWORD remotamente via sudo -S
+        ssh -i "$SSH_KEY" -o ConnectTimeout=5 -o StrictHostKeyChecking=no "${SSH_USER}@${TARGET_HOST}" "
+            if [ -f /data/config.env ]; then
+                set -a; source /data/config.env; set +a
+            fi
+            if [[ \"$cmd\" =~ ^sudo ]] || [[ \"$cmd\" =~ \" sudo \" ]]; then
+                cmd_clean=\$(echo \"$cmd\" | sed 's/^sudo /sudo -S /')
+                echo \"\$SYSTEM_PASSWORD\" | eval \"\$cmd_clean\" 2>/dev/null
+            else
+                $cmd
+            fi
+        "
     fi
 }
 

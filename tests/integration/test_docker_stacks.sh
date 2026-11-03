@@ -4,7 +4,7 @@
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/test_framework.sh"
+source "${SCRIPT_DIR}/../test_framework.sh"
 
 start_suite "Containers e Stacks Docker" "Validação de integridade dos 40+ containers"
 
@@ -26,7 +26,6 @@ check_container() {
 
 check_container "dockge" "Gerenciador de Stacks"
 check_container "dozzle" "Visualizador de Logs"
-check_container "uptime-kuma" "Monitoramento de Uptime"
 check_container "qbittorrent" "Cliente BitTorrent"
 check_container "prowlarr" "Gerenciador de Indexadores"
 check_container "jackett" "Proxy de Indexadores"

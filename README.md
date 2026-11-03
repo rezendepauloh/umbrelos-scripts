@@ -463,7 +463,24 @@ ssh -i ~/.ssh/id_ed25519 umbrel@192.168.0.8 "/home/umbrel/umbrelos-scripts/tests
 ./tests/run_all.sh samba     # Apenas serviços e shares Samba
 ./tests/run_all.sh docker    # Apenas containers Docker e homelab_network
 ./tests/run_all.sh http      # Apenas disponibilidade dos endpoints web
+./tests/run_all.sh tunnels   # Apenas auditoria de túneis zrok v2 e Tailscale
 ```
+
+---
+
+## 🛠️ Scripts Utilitários de Autonomia e Diagnóstico Rápido
+
+Para que você não precise de comandos complexos no terminal nem de auxílio de IA no dia a dia, criamos uma suíte completa de autonomia na pasta `scripts/utils/`:
+
+| Script | O que ele faz | Comando de Execução |
+| :--- | :--- | :--- |
+| **Dashboard de Saúde** | Exibe CPU, RAM, temperatura da CPU, horas de uso e saúde SMART dos 4 discos (NVMe + 3 HDs) | `./scripts/utils/homelab_dashboard_saude.sh` |
+| **Recuperar HDs e Samba** | Desmonta montagens fantasmas após oscilação USB, remonta por UUID canônico e restaura Samba/Jellyfin | `./scripts/utils/recuperar_hds_remoto.sh` |
+| **Atualizador de Stacks** | Varre as stacks Compose, baixa novas imagens e só recria os containers com novas versões | `./scripts/utils/homelab_atualizar_stacks.sh` |
+| **Faxina Docker** | Limpa imagens órfãs, volumes mortos e trunca logs excessivos (> 300MB) para liberar NVMe | `./scripts/utils/homelab_limpeza_docker.sh` |
+| **Auditor de Túneis Remotos** | Testa a conectividade externa dos 6 túneis zrok v2 e do Tailscale em segundos | `./scripts/utils/homelab_auditar_zrok.sh` |
+
+> 📖 **Manual Completo de Autonomia**: Acesse [Docs/guias/guia_autonomia_e_manutencao_remota.md](Docs/guias/guia_autonomia_e_manutencao_remota.md) para detalhes de cada utilitário.
 
 ---
 
@@ -536,20 +553,31 @@ umbrelos-scripts/
 │   ├── cloudflare_tunnels_acesso_remoto.md   # Guia de túneis Cloudflare contra bloqueios corporativos
 │   └── pos_instalacao_portas_e_testes.md     # Catálogo completo de serviços e portas
 ├── scripts/
-│   ├── setup/                 # Módulos sequenciais de instalação do zero (01 a 06)
+│   ├── setup/                 # Módulos sequenciais de instalação do zero (01 a 07)
 │   │   ├── 01_system_prep.sh
 │   │   ├── 02_storage_setup.sh
 │   │   ├── 03_samba_setup.sh
 │   │   ├── 04_docker_custom_stacks.sh
 │   │   ├── 05_security_network.sh
 │   │   ├── 06_backup_databases.sh
-│   │   └── 06_backup_popos.sh
+│   │   └── 07_backup_popos.sh
 │   ├── daemons/               # Daemons de inicialização e persistência
 │   │   └── homelab-daemon.sh
 │   └── utils/                 # Scripts utilitários de manutenção e automação
-│       ├── generate_epg.sh    # Gerador de grade EPG XMLTV sob medida para Jellyfin
-│       └── backup_pre_upgrade.sh # Rotina de snapshot e backup completo pré-upgrade
-├── tests/                     # Bateria de testes de integridade do Homelab
+│       ├── generate_epg.sh             # Gerador de grade EPG XMLTV sob medida para Jellyfin
+│       ├── backup_pre_upgrade.sh       # Rotina de snapshot e backup completo pré-upgrade
+│       ├── homelab-backup-semanal.sh   # Rotina agendada semanal de dumps e cópia para o Pop!_OS
+│       ├── homelab_dashboard_saude.sh  # Painel de saúde em tempo real (CPU, RAM, Discos, Docker, Túneis)
+│       ├── homelab_atualizar_stacks.sh # Pull e deploy das stacks Docker gerenciadas
+│       ├── homelab_limpeza_docker.sh   # Faxina e prune de imagens/volumes órfãos no Docker
+│       ├── homelab_auditar_zrok.sh     # Auditoria de conectividade dos túneis públicos
+│       └── recuperar_hds_remoto.sh     # Remontagem remota de HDs e reinício do bind mount do Jellyfin
+├── tests/                     # Suíte de testes automatizados (padrão unificado Pop!_OS / Python / Bash)
+│   ├── run_all.py             # Runner Python com saída ANSI, estatísticas e milissegundos
+│   ├── run_all.sh             # Wrapper executável com opções --unit, --integration e --bash
+│   ├── README.md              # Guia completo de execução e estrutura dos testes
+│   ├── unit/                  # Testes unitários (sintaxe Bash, YAML e integridade de variáveis)
+│   └── integration/           # Testes de infraestrutura remota (Hardware, Samba, Docker, HTTP, Túneis)
 └── setup_umbrelos.sh          # Orquestrador principal interativo
 ```
 

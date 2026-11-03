@@ -1,77 +1,62 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# tests/run_all.sh - Executor Unificado da Suíte de Testes (Homelab umbrelOS)
-# ==============================================================================
-# Estilo inspirado no executor unificado do Sistema Karteman.
-# Executa testes de Armazenamento, Samba, Docker e HTTP com saída colorida.
-#
-# Uso:
-#   ./tests/run_all.sh                  # Executa todas as suítes
-#   ./tests/run_all.sh storage          # Executa apenas a suíte de storage
-#   ./tests/run_all.sh samba            # Executa apenas a suíte de samba
-#   ./tests/run_all.sh docker           # Executa apenas a suíte de docker
-#   ./tests/run_all.sh http             # Executa apenas a suíte de http
+# tests/run_all.sh - Orquestrador Geral de Testes (Bash & Python)
+# Suporta:
+#   ./tests/run_all.sh               -> Roda tudo (Unitários locais + Integração remota)
+#   ./tests/run_all.sh --unit        -> Roda apenas testes unitários locais (sintaxe, YAML, configs)
+#   ./tests/run_all.sh --integration -> Roda apenas testes de integração no servidor
+#   ./tests/run_all.sh --bash        -> Roda suíte clássica puramente em Bash
 # ==============================================================================
 
-set -uo pipefail
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${TESTS_DIR}/.." && pwd)"
-
-source "${TESTS_DIR}/test_framework.sh"
-
-echo -e "\n${BOLD}${WHITE}========================================================================${RESET}"
-echo -e "${BOLD}${CYAN}🚀 SUÍTE DE TESTES E INTEGRIDADE — HOMELAB UMBRELOS${RESET}"
-echo -e "${WHITE}Ambiente de Execução: ${BOLD}$( [ "$IS_LOCAL_HOST" = true ] && echo "HOST LOCAL (mini PC)" || echo "REMOTO (Pop!_OS → ${TARGET_HOST})" )${RESET}"
-echo -e "${BOLD}${WHITE}========================================================================${RESET}"
-
-MODULE="${1:-all}"
-
-case "$MODULE" in
-    storage)
-        source "${TESTS_DIR}/test_storage_and_mounts.sh"
-        ;;
-    samba)
-        source "${TESTS_DIR}/test_samba_services.sh"
-        ;;
-    docker)
-        source "${TESTS_DIR}/test_docker_stacks.sh"
-        ;;
-    http)
-        source "${TESTS_DIR}/test_http_endpoints.sh"
-        ;;
-    all)
-        source "${TESTS_DIR}/test_storage_and_mounts.sh"
-        source "${TESTS_DIR}/test_samba_services.sh"
-        source "${TESTS_DIR}/test_docker_stacks.sh"
-        source "${TESTS_DIR}/test_http_endpoints.sh"
-        ;;
-    *)
-        echo -e "${RED}Módulo de teste desconhecido: ${MODULE}${RESET}"
-        echo "Opções válidas: storage, samba, docker, http, all"
-        exit 1
-        ;;
-esac
-
-SUITE_END_TIME=$(date +%s%3N 2>/dev/null || date +%s)
-DURATION=$((SUITE_END_TIME - SUITE_START_TIME))
-# Formatação amigável do tempo
-if [ "$DURATION" -gt 1000 ]; then
-    DURATION_FMT="$(echo "scale=2; $DURATION / 1000" | bc 2>/dev/null || echo "$((DURATION / 1000))")s"
-else
-    DURATION_FMT="${DURATION}ms"
+# Se Python 3 estiver disponível e não for forçado modo --bash, usamos o runner moderno
+if command -v python3 >/dev/null 2>&1 && [ "${1:-}" != "--bash" ]; then
+    exec python3 "${SCRIPT_DIR}/run_all.py" "$@"
 fi
+
+# Fallback: Modo puramente Bash
+source "${SCRIPT_DIR}/test_framework.sh"
+
+echo -e "${BOLD}${CYAN}========================================================================${RESET}"
+echo -e "${BOLD}${WHITE}🚀 SUÍTE DE TESTES E INTEGRIDADE — HOMELAB UMBRELOS (BASH RUNNER)${RESET}"
+if [ "$IS_LOCAL_HOST" = true ]; then
+    echo -e "${BOLD}${WHITE}Ambiente de Execução:${RESET} ${GREEN}LOCAL (Direto no Servidor Umbrel)${RESET}"
+else
+    echo -e "${BOLD}${WHITE}Ambiente de Execução:${RESET} ${YELLOW}REMOTO (Pop!_OS → ${TARGET_HOST})${RESET}"
+fi
+echo -e "${BOLD}${CYAN}========================================================================${RESET}"
+
+export TESTS_PASSED=0
+export TESTS_FAILED=0
+export TESTS_SKIPPED=0
+
+run_subsuite() {
+    local script_file="$1"
+    if [ -f "${SCRIPT_DIR}/integration/${script_file}" ]; then
+        bash "${SCRIPT_DIR}/integration/${script_file}"
+    elif [ -f "${SCRIPT_DIR}/${script_file}" ]; then
+        bash "${SCRIPT_DIR}/${script_file}"
+    fi
+}
+
+run_subsuite "test_storage_and_mounts.sh"
+run_subsuite "test_samba_services.sh"
+run_subsuite "test_docker_stacks.sh"
+run_subsuite "test_http_endpoints.sh"
+run_subsuite "test_remote_tunnels.sh"
 
 TOTAL_TESTS=$((TESTS_PASSED + TESTS_FAILED + TESTS_SKIPPED))
 
-echo -e "\n${BOLD}${WHITE}========================================================================${RESET}"
+echo -e "\n${BOLD}${CYAN}========================================================================${RESET}"
 if [ "$TESTS_FAILED" -eq 0 ]; then
     echo -e "${BOLD}${GREEN}✔ SUCESSO: Todos os testes passaram!${RESET}"
 else
     echo -e "${BOLD}${RED}✖ ATENÇÃO: Foram encontradas falhas nos testes!${RESET}"
 fi
-echo -e "Total: ${BOLD}${TOTAL_TESTS}${RESET} | ${GREEN}Passou: ${TESTS_PASSED}${RESET} | ${RED}Falhas: ${TESTS_FAILED}${RESET} | ${YELLOW}Ignorados: ${TESTS_SKIPPED}${RESET} | Tempo: ${DARK_GRAY}${DURATION_FMT}${RESET}"
-echo -e "${BOLD}${WHITE}========================================================================${RESET}\n"
+echo -e "Total: ${BOLD}${TOTAL_TESTS}${RESET} | Passou: ${GREEN}${TESTS_PASSED}${RESET} | Falhas: ${RED}${TESTS_FAILED}${RESET} | Ignorados: ${YELLOW}${TESTS_SKIPPED}${RESET}"
+echo -e "${BOLD}${CYAN}========================================================================${RESET}\n"
 
 if [ "$TESTS_FAILED" -gt 0 ]; then
     exit 1

@@ -4,7 +4,7 @@
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/test_framework.sh"
+source "${SCRIPT_DIR}/../test_framework.sh"
 
 start_suite "Armazenamento Físico e Montagens" "Validação de UUIDs, ausência de duplicatas e bind mounts"
 
