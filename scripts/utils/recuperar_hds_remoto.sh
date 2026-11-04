@@ -14,6 +14,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -43,8 +44,9 @@ echo -e "${GREEN}[✔] Conexão SSH estabelecida com sucesso!${NC}"
 
 # 2. Diagnóstico preliminar e execução remota de recuperação
 echo -e "\n${YELLOW}[2/4] Executando rotina de recuperação e desmontagem limpa no servidor...${NC}"
+echo -e "${CYAN}ℹ Conectado via canal seguro (stream não-interativo)${NC}\n"
 
-ssh -i "${SSH_KEY}" -t "${SERVER_USER}@${SERVER_HOST}" 'bash -s' << 'REMOTESCRIPT'
+ssh -o LogLevel=ERROR -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" 'bash -s' << 'REMOTESCRIPT'
 source /data/config.env 2>/dev/null || true
 
 # UUIDs Canônicos dos Discos

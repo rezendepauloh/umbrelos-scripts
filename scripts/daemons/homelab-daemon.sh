@@ -30,6 +30,11 @@ LOG="/data/homelab-daemon.log"
 exec >> "$LOG" 2>&1
 echo "=== HOMELAB DAEMON INICIADO: $(date) ==="
 
+# 0.1 Garantir Fuso Horário Local (America/Campo_Grande)
+if [ -n "${TIMEZONE:-}" ]; then
+    timedatectl set-timezone "${TIMEZONE}" 2>/dev/null || true
+fi
+
 # 0. Garantir IP Estático na placa de rede física
 if [ "${SET_STATIC_IP:-false}" = "true" ] && [ -n "${STATIC_IP:-}" ]; then
     NET_IF="${NETWORK_INTERFACE:-enp1s0}"

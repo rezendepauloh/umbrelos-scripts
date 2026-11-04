@@ -3,8 +3,13 @@ config.env
 .env
 *.env
 config/samba/smb.conf
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
 !*.example
 !*.env.example
+!config/samba/smb.conf.example
 
 # Chaves e certificados
 *.key

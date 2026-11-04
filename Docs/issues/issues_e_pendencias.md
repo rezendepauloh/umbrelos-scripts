@@ -106,6 +106,27 @@ Este documento centraliza todas as pendências identificadas, pontos de atençã
 
 ---
 
+## 🚨 Issue #1 (Pendente): Unificação das Variáveis de Ambiente (`.env` vs `config.env`)
+
+### 📌 Contexto e Problema Identificado:
+- Atualmente coexistem dois arquivos de variáveis no ambiente do servidor:
+  1. `/data/config.env` (e `config.env` local): Fonte canônica da verdade do sistema Homelab (variáveis de rede, senhas, UUIDs dos discos, tokens zrok, caminhos persistentes).
+  2. `/home/umbrel/umbrelos-scripts/.env`: Arquivo secundário gerado por `04_docker_custom_stacks.sh` contendo um subconjunto de variáveis para alimentar os arquivos `docker-compose.yml`.
+- Essa duplicidade gerou problemas na prática:
+  - Variáveis sensíveis como `${SYSTEM_PASSWORD}` e `${SAMBA_USER_1}` não estavam presentes no `.env` do Compose, gerando o aviso `The "SYSTEM_PASSWORD" variable is not set. Defaulting to a blank string.` e deixando o basic-auth dos túneis zrok vulnerável com senha vazia até a correção recente.
+  - Risco de dessincronização entre as configurações do host e as portas/caminhos das stacks Docker.
+
+### 🎯 Proposta de Solução:
+1. **Unificar no `config.env` / `/data/config.env`:**
+   - Fazer com que o `config.env.example` e o `config.env` sejam os **únicos** templates e arquivos de configuração de todo o projeto.
+   - Adicionar ao `config.env.example` todas as variáveis consumidas pelas stacks Docker Compose (`DOCKGE_PORT`, `MEDIA_DIR`, `TIMEZONE`, etc.).
+2. **Apontar Docker Compose para o arquivo persistente:**
+   - Nos scripts de orquestração (`homelab_atualizar_stacks.sh`, `homelab-daemon.sh`, etc.), utilizar `--env-file /data/config.env` (ou criar um symlink automático `/home/umbrel/umbrelos-scripts/.env -> /data/config.env`).
+3. **Eliminar a geração redundante:**
+   - Remover a rotina legada em `04_docker_custom_stacks.sh` que tentava manter um `.env` paralelo e estático.
+
+---
+
 ## 🧪 Issue 2: Bateria de Testes e Validação dos Demais Serviços
 
 Precisamos rodar testes práticos de ponta a ponta e validar as configurações dos seguintes serviços instalados:

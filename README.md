@@ -565,7 +565,9 @@ umbrelos-scripts/
 │   │   └── homelab-daemon.sh
 │   └── utils/                 # Scripts utilitários de manutenção e automação
 │       ├── generate_epg.sh             # Gerador de grade EPG XMLTV sob medida para Jellyfin
-│       ├── backup_pre_upgrade.sh       # Rotina de snapshot e backup completo pré-upgrade
+│       ├── backup_pre_upgrade.sh       # Rotina interna do servidor de snapshot pré-upgrade
+│       ├── homelab_backup_pre_upgrade.sh # Disparador do Pop!_OS para snapshot completo pré-upgrade
+│       ├── homelab_rollback.sh         # Central de rollback de OS (Rugix A/B), bancos e app-data
 │       ├── homelab-backup-semanal.sh   # Rotina agendada semanal de dumps e cópia para o Pop!_OS
 │       ├── homelab_dashboard_saude.sh  # Painel de saúde em tempo real (CPU, RAM, Discos, Docker, Túneis)
 │       ├── homelab_atualizar_stacks.sh # Pull e deploy das stacks Docker gerenciadas

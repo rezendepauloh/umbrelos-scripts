@@ -35,10 +35,17 @@ if ! ssh -i "${SSH_KEY}" -o ConnectTimeout=4 -o BatchMode=yes "${SERVER_USER}@${
     exit 1
 fi
 
-ssh -i "${SSH_KEY}" -t "${SERVER_USER}@${SERVER_HOST}" 'bash -s' << 'REMOTESCRIPT'
-source /data/config.env 2>/dev/null || true
+echo -e "${CYAN}ℹ Conectado via canal seguro (stream não-interativo)${NC}\n"
+
+ssh -o LogLevel=ERROR -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" 'bash -s' << 'REMOTESCRIPT'
+if [ -f /data/config.env ]; then
+    set -a
+    source /data/config.env
+    set +a
+fi
 
 COMPOSE_BASE="/home/umbrel/umbrelos-scripts/compose"
+ENV_FILE="/home/umbrel/umbrelos-scripts/.env"
 if [ ! -d "$COMPOSE_BASE" ]; then
     echo "Diretório de stacks $COMPOSE_BASE não encontrado."
     exit 1
@@ -52,11 +59,11 @@ for stack in "${STACKS[@]}"; do
         echo -e "\n\033[1;36m[+] Verificando atualizações para a stack: $stack\033[0m"
         cd "$STACK_DIR"
         
-        # Pull de novas imagens
-        echo "$SYSTEM_PASSWORD" | sudo -S docker compose --env-file /home/umbrel/umbrelos-scripts/.env pull 2>&1 | grep -v 'password for umbrel' || true
+        # Pull de novas imagens passando as variáveis de ambiente exportadas
+        echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" pull 2>&1 | grep -v 'password for umbrel' || true
         
         # Up recreation automática
-        echo "$SYSTEM_PASSWORD" | sudo -S docker compose --env-file /home/umbrel/umbrelos-scripts/.env up -d 2>&1 | grep -v 'password for umbrel' || true
+        echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" up -d 2>&1 | grep -v 'password for umbrel' || true
     fi
 done
 

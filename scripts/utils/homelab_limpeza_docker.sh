@@ -36,7 +36,9 @@ if ! ssh -i "${SSH_KEY}" -o ConnectTimeout=4 -o BatchMode=yes "${SERVER_USER}@${
     exit 1
 fi
 
-ssh -i "${SSH_KEY}" -t "${SERVER_USER}@${SERVER_HOST}" 'bash -s' << 'REMOTESCRIPT'
+echo -e "${CYAN}ℹ Conectado via canal seguro (stream não-interativo)${NC}\n"
+
+ssh -o LogLevel=ERROR -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" 'bash -s' << 'REMOTESCRIPT'
 source /data/config.env 2>/dev/null || true
 
 echo -e "\n\033[1;36m[1/3] Espaço em disco antes da limpeza (NVMe /):\033[0m"
