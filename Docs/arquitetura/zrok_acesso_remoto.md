@@ -77,23 +77,23 @@ services:
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 3. Robô Verifica Diários Oficiais (Blindado com Basic Auth)
+  # 3. Robô Verifica Diários Oficiais (Blindado com Basic Auth multi-usuário)
   zrok-diarios:
     image: openziti/zrok2:latest
     container_name: zrok-diarios
     restart: unless-stopped
     user: "1000:1000"
-    command: ["share", "public", "http://verifica-diarios-app:8093", "-n", "public:diarios-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--headless"]
+    command: ["share", "public", "http://verifica-diarios-app:8093", "-n", "public:diarios-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--basic-auth", "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}", "--headless"]
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 4. App Investimentos Pessoais (Blindado com Basic Auth)
+  # 4. App Investimentos Pessoais (Blindado com Basic Auth multi-usuário)
   zrok-investimentos:
     image: openziti/zrok2:latest
     container_name: zrok-investimentos
     restart: unless-stopped
     user: "1000:1000"
-    command: ["share", "public", "http://paulo-investimentos-app:8094", "-n", "public:investimentos-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--headless"]
+    command: ["share", "public", "http://paulo-investimentos-app:8094", "-n", "public:investimentos-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--basic-auth", "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}", "--headless"]
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
@@ -129,8 +129,8 @@ O script `homelab-daemon.sh` garante que a stack `compose/tunnels` inicie automa
 | 🖥️ **Painel umbrelOS** | [https://umbrel-paulo.shares.zrok.io](https://umbrel-paulo.shares.zrok.io) | `http://172.18.0.1:80` | Senha Mestre do Umbrel |
 | 🩺 **Clínica Karteman** | [https://karteman-paulo.shares.zrok.io](https://karteman-paulo.shares.zrok.io) | `http://karteman-app:8081` | Login da Aplicação Karteman |
 | 🍿 **Jellyfin (Streaming/TV)** | [https://jellyfin-paulo.shares.zrok.io](https://jellyfin-paulo.shares.zrok.io) | `http://172.18.0.1:8096` | Login Oficial do Jellyfin |
-| 📰 **Verifica Diários** | [https://diarios-paulo.shares.zrok.io](https://diarios-paulo.shares.zrok.io) | `http://verifica-diarios-app:8093` | 🔒 Usuário/Senha (`paulo:senha`) |
-| 💰 **Investimentos** | [https://investimentos-paulo.shares.zrok.io](https://investimentos-paulo.shares.zrok.io) | `http://paulo-investimentos-app:8094` | 🔒 Usuário/Senha (`paulo:senha`) |
+| 📰 **Verifica Diários** | [https://diarios-paulo.shares.zrok.io](https://diarios-paulo.shares.zrok.io) | `http://verifica-diarios-app:8093` | 🔒 Usuário/Senha (`paulo` / `kamila`) |
+| 💰 **Investimentos** | [https://investimentos-paulo.shares.zrok.io](https://investimentos-paulo.shares.zrok.io) | `http://paulo-investimentos-app:8094` | 🔒 Usuário/Senha (`paulo` / `kamila`) |
 | ☁️ **Nextcloud** | [https://cloud-paulo.shares.zrok.io](https://cloud-paulo.shares.zrok.io) | `http://172.18.0.1:8081` | Login Nextcloud |
 
 

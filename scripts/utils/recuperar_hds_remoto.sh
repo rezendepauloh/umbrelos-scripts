@@ -98,7 +98,12 @@ REMOTESCRIPT
 echo -e "\n${YELLOW}[3/4] Verificando integridade dos compartilhamentos Samba...${NC}"
 sleep 2
 
-if smbclient -L "//${SERVER_HOST}" -U "paulo%senha_oculta" -g 2>/dev/null | grep -q "Midia"; then
+SAMBA_AUTH_OPT=""
+if [ -n "${SYSTEM_PASSWORD:-}" ]; then
+    SAMBA_AUTH_OPT="-U ${SAMBA_USER_1:-paulo}%${SYSTEM_PASSWORD}"
+fi
+
+if smbclient -L "//${SERVER_HOST}" ${SAMBA_AUTH_OPT} -g 2>/dev/null | grep -q "Midia"; then
     echo -e "${GREEN}[✔] Share [Midia] detectada no Samba!${NC}"
 else
     echo -e "${RED}[!] Share [Midia] não encontrada. Verifique se o cabo do disk1 está conectado.${NC}"

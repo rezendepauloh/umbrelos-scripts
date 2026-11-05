@@ -22,21 +22,26 @@ else
 fi
 
 # 3. Testar conexão às shares de rede via smbclient
-PASSWD='senha_oculta'
+PASSWD="${SYSTEM_PASSWORD:-}"
+SAMBA_USER="${SAMBA_USER_1:-paulo}"
 if command -v smbclient >/dev/null 2>&1; then
     TARGET_IP="${TARGET_HOST}"
     [ "$IS_LOCAL_HOST" = true ] && TARGET_IP="127.0.0.1"
 
-    if smbclient "//${TARGET_IP}/Compartilhado" -U "paulo%${PASSWD}" -c "ls" >/dev/null 2>&1; then
-        assert_pass "Conexão e listagem de share [Compartilhado]" "//${TARGET_IP}/Compartilhado"
-    else
-        assert_fail "Falha ao conectar no compartilhamento [Compartilhado]"
-    fi
+    if [ -n "$PASSWD" ]; then
+        if smbclient "//${TARGET_IP}/Compartilhado" -U "${SAMBA_USER}%${PASSWD}" -c "ls" >/dev/null 2>&1; then
+            assert_pass "Conexão e listagem de share [Compartilhado]" "//${TARGET_IP}/Compartilhado"
+        else
+            assert_fail "Falha ao conectar no compartilhamento [Compartilhado]"
+        fi
 
-    if smbclient "//${TARGET_IP}/Midia" -U "paulo%${PASSWD}" -c "ls" >/dev/null 2>&1; then
-        assert_pass "Conexão e listagem de share [Midia]" "//${TARGET_IP}/Midia"
+        if smbclient "//${TARGET_IP}/Midia" -U "${SAMBA_USER}%${PASSWD}" -c "ls" >/dev/null 2>&1; then
+            assert_pass "Conexão e listagem de share [Midia]" "//${TARGET_IP}/Midia"
+        else
+            assert_fail "Falha ao conectar no compartilhamento [Midia]"
+        fi
     else
-        assert_fail "Falha ao conectar no compartilhamento [Midia]"
+        assert_skip "SYSTEM_PASSWORD não definida em config.env" "Teste de autenticação smbclient ignorado"
     fi
 else
     assert_skip "smbclient não instalado no ambiente local" "Instale smbclient para validar shares"

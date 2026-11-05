@@ -27,12 +27,20 @@ test_tunnel() {
 }
 
 # 1. Túneis Públicos zrok v2
+AUTH_PAULO=""
+[ -n "${SYSTEM_PASSWORD:-}" ] && AUTH_PAULO="${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}"
+
+AUTH_KAMILA=""
+[ -n "${KAMILA_PASSWORD:-}" ] && AUTH_KAMILA="${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}"
+
 test_tunnel "Umbrel Dashboard" "https://umbrel-paulo.shares.zrok.io" ""
 test_tunnel "Nextcloud Nuvem" "https://cloud-paulo.shares.zrok.io" ""
 test_tunnel "Jellyfin Streaming" "https://jellyfin-paulo.shares.zrok.io" ""
 test_tunnel "Sistema Karteman" "https://karteman-paulo.shares.zrok.io" ""
-test_tunnel "Verifica Diários" "https://diarios-paulo.shares.zrok.io" "paulo:senha_oculta"
-test_tunnel "Investimentos Pessoais" "https://investimentos-paulo.shares.zrok.io" "paulo:senha_oculta"
+test_tunnel "Verifica Diários (Paulo)" "https://diarios-paulo.shares.zrok.io" "$AUTH_PAULO"
+test_tunnel "Verifica Diários (Kamila)" "https://diarios-paulo.shares.zrok.io" "$AUTH_KAMILA"
+test_tunnel "Investimentos Pessoais (Paulo)" "https://investimentos-paulo.shares.zrok.io" "$AUTH_PAULO"
+test_tunnel "Investimentos Pessoais (Kamila)" "https://investimentos-paulo.shares.zrok.io" "$AUTH_KAMILA"
 
 # 2. Conectividade Tailscale
 if [ "$IS_LOCAL_HOST" = true ]; then

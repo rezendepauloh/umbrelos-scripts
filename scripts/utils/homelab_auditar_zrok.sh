@@ -8,6 +8,13 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+CONFIG_FILE="${SCRIPT_DIR}/config.env"
+if [[ -f "$CONFIG_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$CONFIG_FILE"
+fi
+
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -39,12 +46,20 @@ test_url() {
 }
 
 echo -e "${CYAN}${BOLD}[1/2] Testando Conectividade dos 6 Túneis Públicos zrok v2:${NC}"
+AUTH_PAULO=""
+[ -n "${SYSTEM_PASSWORD:-}" ] && AUTH_PAULO="${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}"
+
+AUTH_KAMILA=""
+[ -n "${KAMILA_PASSWORD:-}" ] && AUTH_KAMILA="${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}"
+
 test_url "Umbrel OS Dashboard" "https://umbrel-paulo.shares.zrok.io" ""
 test_url "Nextcloud Nuvem" "https://cloud-paulo.shares.zrok.io" ""
 test_url "Jellyfin Streaming" "https://jellyfin-paulo.shares.zrok.io" ""
 test_url "Sistema Karteman" "https://karteman-paulo.shares.zrok.io" ""
-test_url "Verifica Diários" "https://diarios-paulo.shares.zrok.io" "paulo:senha_oculta"
-test_url "Investimentos Pessoais" "https://investimentos-paulo.shares.zrok.io" "paulo:senha_oculta"
+test_url "Verifica Diários (Paulo)" "https://diarios-paulo.shares.zrok.io" "$AUTH_PAULO"
+test_url "Verifica Diários (Kamila)" "https://diarios-paulo.shares.zrok.io" "$AUTH_KAMILA"
+test_url "Investimentos (Paulo)" "https://investimentos-paulo.shares.zrok.io" "$AUTH_PAULO"
+test_url "Investimentos (Kamila)" "https://investimentos-paulo.shares.zrok.io" "$AUTH_KAMILA"
 
 echo -e "\n${CYAN}${BOLD}[2/2] Testando VPN Tailscale Homelab:${NC}"
 TAILSCALE_HOST="100.88.159.41"

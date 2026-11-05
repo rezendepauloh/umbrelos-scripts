@@ -23,6 +23,16 @@ TARGET_HOST="${TARGET_HOST:-192.168.0.8}"
 SSH_USER="${SSH_USER:-umbrel}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 
+# Carregar variáveis do config.env se disponível
+CONFIG_ENV_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/config.env"
+if [ -f "$CONFIG_ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    source "$CONFIG_ENV_FILE"
+elif [ -f "/data/config.env" ]; then
+    # shellcheck disable=SC1091
+    source "/data/config.env"
+fi
+
 IS_LOCAL_HOST=false
 if [[ "$(hostname 2>/dev/null)" == "umbrel" ]] || [[ -f "/data/umbrel-os" ]] || [[ -f "/data/bin/homelab-daemon.sh" ]]; then
     IS_LOCAL_HOST=true

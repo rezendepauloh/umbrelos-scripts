@@ -25,7 +25,7 @@ services:
     container_name: zrok-diarios
     restart: unless-stopped
     user: "1000:1000"
-    command: ["share", "public", "http://verifica-diarios-app:8093", "-n", "public:diarios-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--headless"]
+    command: ["share", "public", "http://verifica-diarios-app:8093", "-n", "public:diarios-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--basic-auth", "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}", "--headless"]
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
@@ -35,7 +35,7 @@ services:
     container_name: zrok-investimentos
     restart: unless-stopped
     user: "1000:1000"
-    command: ["share", "public", "http://paulo-investimentos-app:8094", "-n", "public:investimentos-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--headless"]
+    command: ["share", "public", "http://paulo-investimentos-app:8094", "-n", "public:investimentos-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--basic-auth", "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}", "--headless"]
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 

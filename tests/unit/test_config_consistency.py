@@ -31,6 +31,7 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
             "SYSTEM_USER",
             "SAMBA_USER_1",
             "SAMBA_USER_2",
+            "KAMILA_PASSWORD",
             "DISK1_MOUNT",
             "DISK2_MOUNT",
             "DISK3_MOUNT"
@@ -57,12 +58,25 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
                 self.assertIn(uuid, content, f"UUID {uuid} deve estar documentado na tabela de armazenamento do AGENTS.md")
 
     def test_03_no_exposed_passwords_in_tracked_examples(self):
-        """Impede que senhas em texto claro sejam commitadas em arquivos .example."""
+        """Impede que senhas em texto claro sejam commitadas em arquivos versionados."""
         with open(CONFIG_EXAMPLE, 'r', encoding='utf-8') as f:
-            content = f.read()
+            example_content = f.read()
 
         # Garante que não foi esquecida senha real no example
-        self.assertNotIn("senha_oculta", content, "Senha real não pode constar em config.env.example!")
+        self.assertNotIn("senha_root", example_content.replace('SYSTEM_PASSWORD="senha_root"', ""))
+        self.assertNotIn("senha_kamila", example_content.replace('KAMILA_PASSWORD="senha_kamila"', ""))
+
+        # Verifica se config.env existe e garante que nenhuma senha contida nele vaze em arquivos rastreados pelo git
+        config_env_path = os.path.join(ROOT_DIR, 'config.env')
+        if os.path.exists(config_env_path):
+            with open(config_env_path, 'r', encoding='utf-8') as f:
+                env_content = f.read()
+            passwords = []
+            for match in re.finditer(r'(?:SYSTEM_PASSWORD|KAMILA_PASSWORD)=["\']([^"\']+)["\']', env_content):
+                passwords.append(match.group(1))
+
+            for pwd in passwords:
+                self.assertNotIn(pwd, example_content, "Nenhuma senha de config.env deve estar no config.env.example!")
 
 
 if __name__ == '__main__':
