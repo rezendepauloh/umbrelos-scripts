@@ -78,6 +78,25 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
             for pwd in passwords:
                 self.assertNotIn(pwd, example_content, "Nenhuma senha de config.env deve estar no config.env.example!")
 
+    def test_04_tunnels_compose_has_staggered_delays_and_backoff(self):
+        """Garante que compose/tunnels/docker-compose.yml possui proteção contra rate limits do zrok."""
+        tunnels_compose = os.path.join(ROOT_DIR, 'compose', 'tunnels', 'docker-compose.yml')
+        self.assertTrue(os.path.exists(tunnels_compose), "compose/tunnels/docker-compose.yml deve existir.")
+
+        with open(tunnels_compose, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Verifica se todos os serviços usam restart com backoff finito em vez de looping infinito
+        self.assertIn("restart: on-failure:5", content, "Túneis zrok devem usar 'restart: on-failure:5'.")
+        self.assertNotIn("restart: unless-stopped", content, "Túneis zrok não devem usar 'unless-stopped' para evitar looping de HTTP 429.")
+
+        # Verifica se há escalonamento com sleeps no command/entrypoint
+        self.assertIn("sleep 20", content, "zrok-karteman deve aguardar pelo menos 20s.")
+        self.assertIn("sleep 40", content, "zrok-diarios deve aguardar pelo menos 40s.")
+        self.assertIn("sleep 60", content, "zrok-investimentos deve aguardar pelo menos 60s.")
+        self.assertIn("sleep 80", content, "zrok-cloud deve aguardar pelo menos 80s.")
+        self.assertIn("sleep 100", content, "zrok-jellyfin deve aguardar pelo menos 100s.")
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -403,6 +403,7 @@ O script configura automaticamente os seguintes compartilhamentos no arquivo `/e
    - Permite acessar serviços internos do homelab (como **Karteman**, **Jellyfin**, **Nextcloud**, **Verifica Diários** e **Investimentos**) a partir de qualquer rede externa ou corporativa restritiva (como firewalls corporativos que bloqueiam portas WireGuard/Tailscale).
    - Não requer compra de domínio próprio nem abertura de portas no roteador (NAT Traversal via TLS outbound).
    - Inclui proteção prévia por senha (`Basic Auth`) para serviços sem tela de login nativa.
+   - **Blindagem Anti Rate-Limit e Queda de Energia:** Inicialização sequencial escalonada (`0s` a `100s`) e política de backoff `on-failure:5`, evitando bloqueios por concorrência e loops na API pública do zrok em reinicializações do servidor.
    - Detalhes da arquitetura, stack `compose/tunnels` e URLs fixas ativas em [Docs/arquitetura/zrok_acesso_remoto.md](Docs/arquitetura/zrok_acesso_remoto.md).
 
 ---
@@ -478,6 +479,7 @@ Para que você não precise de comandos complexos no terminal nem de auxílio de
 | **Recuperar HDs e Samba** | Desmonta montagens fantasmas após oscilação USB, remonta por UUID canônico e restaura Samba/Jellyfin | `./scripts/utils/recuperar_hds_remoto.sh` |
 | **Atualizador de Stacks** | Varre as stacks Compose, baixa novas imagens e só recria os containers com novas versões | `./scripts/utils/homelab_atualizar_stacks.sh` |
 | **Faxina Docker** | Limpa imagens órfãs, volumes mortos e trunca logs excessivos (> 300MB) para liberar NVMe | `./scripts/utils/homelab_limpeza_docker.sh` |
+| **Inicializador Escalonado zrok** | Sobe os 6 túneis zrok v2 com espaçamento de segurança contra rate limits da API pública | `./scripts/utils/start_zrok_tunnels.sh` |
 | **Auditor de Túneis Remotos** | Testa a conectividade externa dos 6 túneis zrok v2 e do Tailscale em segundos | `./scripts/utils/homelab_auditar_zrok.sh` |
 
 > 📖 **Manual Completo de Autonomia**: Acesse [Docs/guias/guia_autonomia_e_manutencao_remota.md](Docs/guias/guia_autonomia_e_manutencao_remota.md) para detalhes de cada utilitário.
@@ -572,6 +574,7 @@ umbrelos-scripts/
 │       ├── homelab_dashboard_saude.sh  # Painel de saúde em tempo real (CPU, RAM, Discos, Docker, Túneis)
 │       ├── homelab_atualizar_stacks.sh # Pull e deploy das stacks Docker gerenciadas
 │       ├── homelab_limpeza_docker.sh   # Faxina e prune de imagens/volumes órfãos no Docker
+│       ├── start_zrok_tunnels.sh       # Inicialização escalonada segura dos 6 túneis zrok v2
 │       ├── homelab_auditar_zrok.sh     # Auditoria de conectividade dos túneis públicos
 │       └── recuperar_hds_remoto.sh     # Remontagem remota de HDs e reinício do bind mount do Jellyfin
 ├── tests/                     # Suíte de testes automatizados (padrão unificado Pop!_OS / Python / Bash)

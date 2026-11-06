@@ -51,74 +51,108 @@ O umbrelOS possui raiz imutável via Rugix. Por esse motivo, todos os dados de a
 
 ---
 
-## 4. Declaração no Docker Compose
+## 4. Declaração no Docker Compose e Blindagem Contra Rate Limit (HTTP 429)
 
-Os 6 túneis essenciais estão organizados de forma dedicada na stack `compose/tunnels/docker-compose.yml`, conectando-se diretamente à bridge `homelab_network`:
+Os 6 túneis essenciais estão organizados de forma dedicada na stack `compose/tunnels/docker-compose.yml`, conectando-se diretamente à bridge `homelab_network`.
+
+### Resiliência contra Queda de Luz, Reboots e Rate Limits:
+A API pública do zrok (`api-v2.zrok.io`) aplica um rate limit rígido quando múltiplos túneis do mesmo ambiente tentam se conectar simultaneamente. Para garantir **100% de autonomia e resiliência** em reinicializações do servidor ou atualizações de containers:
+1. **Escalonamento Progressivo (Staggered Startup):** Cada container executa um `sleep` incremental em seu entrypoint antes de invocar o `zrok2 share`.
+2. **Backoff Controlado (`restart: on-failure:5`):** Substituiu o looping infinito do `restart: unless-stopped`, evitando que falhas temporárias de rede interna congelem o ambiente em listas de bloqueio por HTTP 429.
 
 ```yaml
 services:
-  # 1. Painel Principal umbrelOS
+  # 1. Painel Principal umbrelOS (imediato)
   zrok-umbrel:
     image: openziti/zrok2:latest
     container_name: zrok-umbrel
-    restart: unless-stopped
+    restart: on-failure:5
     user: "1000:1000"
-    command: ["share", "public", "http://172.18.0.1:80", "-n", "public:umbrel-paulo", "--headless"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "zrok-umbrel iniciando...";
+        exec zrok2 share public http://172.18.0.1:80 -n public:umbrel-paulo --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 2. Plataforma Clínica Karteman
+  # 2. Plataforma Clínica Karteman (aguarda 20s)
   zrok-karteman:
     image: openziti/zrok2:latest
     container_name: zrok-karteman
-    restart: unless-stopped
+    restart: on-failure:5
     user: "1000:1000"
-    command: ["share", "public", "http://karteman-app:8081", "-n", "public:karteman-paulo", "--headless"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 20;
+        echo "zrok-karteman iniciando...";
+        exec zrok2 share public http://karteman-app:8081 -n public:karteman-paulo --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 3. Robô Verifica Diários Oficiais (Blindado com Basic Auth multi-usuário)
+  # 3. Robô Verifica Diários Oficiais (aguarda 40s)
   zrok-diarios:
     image: openziti/zrok2:latest
     container_name: zrok-diarios
-    restart: unless-stopped
+    restart: on-failure:5
     user: "1000:1000"
-    command: ["share", "public", "http://verifica-diarios-app:8093", "-n", "public:diarios-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--basic-auth", "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}", "--headless"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 40;
+        echo "zrok-diarios iniciando...";
+        exec zrok2 share public http://verifica-diarios-app:8093 -n public:diarios-paulo --basic-auth "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}" --basic-auth "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}" --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 4. App Investimentos Pessoais (Blindado com Basic Auth multi-usuário)
+  # 4. App Investimentos Pessoais (aguarda 60s)
   zrok-investimentos:
     image: openziti/zrok2:latest
     container_name: zrok-investimentos
-    restart: unless-stopped
+    restart: on-failure:5
     user: "1000:1000"
-    command: ["share", "public", "http://paulo-investimentos-app:8094", "-n", "public:investimentos-paulo", "--basic-auth", "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}", "--basic-auth", "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}", "--headless"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 60;
+        echo "zrok-investimentos iniciando...";
+        exec zrok2 share public http://paulo-investimentos-app:8094 -n public:investimentos-paulo --basic-auth "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}" --basic-auth "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}" --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 5. Nextcloud (Nuvem de Arquivos e Documentos)
+  # 5. Nextcloud (aguarda 80s)
   zrok-cloud:
     image: openziti/zrok2:latest
     container_name: zrok-cloud
-    restart: unless-stopped
+    restart: on-failure:5
     user: "1000:1000"
-    command: ["share", "public", "http://172.18.0.1:8081", "-n", "public:cloud-paulo", "--headless"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 80;
+        echo "zrok-cloud iniciando...";
+        exec zrok2 share public http://172.18.0.1:8081 -n public:cloud-paulo --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 6. Jellyfin (Servidor de Streaming & TV)
+  # 6. Jellyfin (aguarda 100s)
   zrok-jellyfin:
     image: openziti/zrok2:latest
     container_name: zrok-jellyfin
-    restart: unless-stopped
+    restart: on-failure:5
     user: "1000:1000"
-    command: ["share", "public", "http://172.18.0.1:8096", "-n", "public:jellyfin-paulo", "--headless"]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 100;
+        echo "zrok-jellyfin iniciando...";
+        exec zrok2 share public http://172.18.0.1:8096 -n public:jellyfin-paulo --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 ```
 
-O script `homelab-daemon.sh` garante que a stack `compose/tunnels` inicie automaticamente em qualquer reinicialização do sistema.
+O script `homelab-daemon.sh` garante que a stack `compose/tunnels` inicie automaticamente em qualquer reinicialização do sistema. Também está disponível o script utilitário `scripts/utils/start_zrok_tunnels.sh` para acionamentos manuais escalonados.
 
 ---
 
