@@ -8,6 +8,8 @@
 
 | Script | Função Principal | Quando Usar |
 | :--- | :--- | :--- |
+| **[`homelab_verificar_quedas.sh`](scripts/utils/homelab_verificar_quedas.sh)** | Analisador ativo de quedas, portas com 502 Bad Gateway/000, containers em loop, OOMKilled e erros de I/O em discos. | Quando o Dozzle mostrar tudo 'Up' mas o app estiver inacessível, der 502 Bad Gateway ou upload travar. |
+| **[`homelab_restaurar_servicos.sh`](scripts/utils/homelab_restaurar_servicos.sh)** | Restaurador inteligente de containers e auto-cura de discos/bind mounts com flags `--service`, `--stack` ou `--all`. | Para reanimar o Immich, Jellyfin, Nextcloud ou qualquer stack travada sem reiniciar o mini PC. |
 | **[`homelab_dashboard_saude.sh`](scripts/utils/homelab_dashboard_saude.sh)** | Painel completo de CPU, memória, temperatura, horas de uso e saúde SMART dos discos. | Para acompanhar a saúde física de hardware, tempo ligado e estado dos HDs. |
 | **[`recuperar_hds_remoto.sh`](scripts/utils/recuperar_hds_remoto.sh)** | Desmonta montagens fantasmas com erro de I/O, remonta por UUID e restaura Samba/Jellyfin. | Quando uma pasta Samba sumir ou o cabo USB oscilar/desconectar. |
 | **[`homelab_atualizar_stacks.sh`](scripts/utils/homelab_atualizar_stacks.sh)** | Varre as stacks Compose, baixa novas imagens e só recria o que mudou. | Periodicamente (ex: semanalmente) para manter os apps atualizados. |
@@ -106,5 +108,68 @@ O script abre um menu interativo permitindo escolher exatamente o que restaurar:
 - **Opção 2 (Restauração Completa de Snapshot):** Restaura os bancos de dados, arquivos de configuração dos apps, /data e stacks a partir do snapshot salvo no `disk3`.
 - **Opção 3 (Restauração Granular de Banco):** Permite restaurar individualmente o banco do Nextcloud (MariaDB), Immich (Postgres) ou Karteman (Postgres).
 - **Opção 4 (Restauração de App Específico):** Restaura apenas a pasta de configuração de um app que deu defeito (ex: `jellyfin`, `nextcloud`, `adguard-home`, `home-assistant`).
+
+---
+
+### 8. Análise de Quedas e Diagnóstico de Serviços (502 Bad Gateway & Loopings)
+Se o Dozzle indicar que os containers estão rodando, mas ao abrir o navegador você receber **`502 Bad Gateway`**, **`Connection Refused`** ou o upload maciço de fotos/mídias travar:
+```bash
+./scripts/utils/homelab_verificar_quedas.sh
+```
+O script audita o sistema em 4 camadas em menos de 5 segundos:
+1. **Armazenamento e I/O:** Testa a leitura real nos 3 HDs e nos bind mounts (`Downloads/media` e `immich/upload`). Detecta montagens fantasmas (quando o cabo USB oscila e o disco re-enumera de `/dev/sda` para `/dev/sdd`, deixando o container com `EIO: i/o error`).
+2. **Containers Docker:** Detecta containers em reinício contínuo (`Restarting`), mortos com erro (`ExitCode != 0`), abatidos por falta de memória RAM (`OOMKilled`) ou com healthcheck interno falho (`unhealthy`).
+3. **Auditoria de Endpoints HTTP:** Faz testes reais nas 21 portas de serviços locais e no Gateway do Umbrel, detectando códigos `502`, `503`, `504` ou portas mortas.
+4. **Inspeção de Logs dos Afetados:** Coleta automaticamente as últimas 15 linhas de erro do container com defeito e indica exatamente qual comando de restauração executar.
+
+---
+
+### 9. Restaurador Inteligente de Serviços & Auto-Cura de Armazenamento
+Para reanimar serviços travados, reparar montagens zumbis ou restaurar o Immich/Jellyfin/Nextcloud após uploads intensos ou oscilação de cabo USB:
+
+#### A. Modo Inteligente (Auto-Cura Automática)
+```bash
+./scripts/utils/homelab_restaurar_servicos.sh
+```
+Escaneia o estado do Homelab e só mexe no que estiver realmente com problema (se apenas o Immich estiver fora, restaura apenas o Immich e suas dependências sem derrubar o resto do sistema).
+
+#### B. Restauração Específica do Immich (Fotos & IA)
+```bash
+./scripts/utils/homelab_restaurar_servicos.sh --service immich
+```
+Executa a cadeia completa de auto-cura do Immich:
+1. Verifica se o `disk2` está com erro de I/O e remonta por UUID se necessário.
+2. Re-aplica o bind mount de `/upload` do Immich.
+3. Reinicia os bancos de dados (`immich_postgres_1` e `immich_redis_1`).
+4. Reinicia os motores de IA e aplicação (`immich_machine-learning_1` e `immich_server_1`).
+5. Valida a API via HTTP 200 e confirma o restabelecimento do serviço.
+
+#### C. Restauração Específica do Jellyfin ou Nextcloud
+```bash
+# Restaurar Servidor de Mídia Jellyfin (re-amarra bind mount de mídia no disk1)
+./scripts/utils/homelab_restaurar_servicos.sh --service jellyfin
+
+# Restaurar Nuvem de Arquivos Nextcloud
+./scripts/utils/homelab_restaurar_servicos.sh --service nextcloud
+```
+
+#### D. Reinicialização de Stacks Compose Customizadas
+```bash
+# Recriar stack Arr (qBittorrent, Prowlarr, Radarr, Sonarr, Bazarr)
+./scripts/utils/homelab_restaurar_servicos.sh --stack arr-stack
+
+# Recriar stack de Gerenciamento (Dockge, Dozzle, IT-Tools, NPM)
+./scripts/utils/homelab_restaurar_servicos.sh --stack management
+
+# Recriar stack de Túneis Remotos zrok v2
+./scripts/utils/homelab_restaurar_servicos.sh --stack tunnels
+```
+
+#### E. Restauração Geral Completa (Força Total)
+```bash
+./scripts/utils/homelab_restaurar_servicos.sh --all
+```
+Executa a faxina completa de desmontagem forçada (`umount -l`) de pontos zumbis, remonta os 3 HDs canônicos pelos seus UUIDs de hardware, re-aplica todos os bind mounts de mídia/fotos, reinicia Samba e todos os containers oficiais e customizados.
+
 
 
