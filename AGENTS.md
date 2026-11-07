@@ -92,4 +92,8 @@ Gerenciadas no diretório `/home/umbrel/umbrelos-scripts/compose/`:
      - Backups completos de bancos (Immich, Nextcloud) e pastas críticas de apps (Jellyfin data) DEVEM ser efetuados e enviados para o Pop!_OS (`/mnt/storage_930/Backups_Homelab`).
 5. **Segurança e .gitignore:**
    - NUNCA versione arquivos contendo senhas reais ou chaves privadas (`config.env`, `.env`, `smb.conf` com dados sensíveis). Use sempre os templates `.example`.
+6. **Variáveis de Ambiente e Stacks Docker (Unificação de `.env`):**
+   - Nunca gere arquivos `.env` paralelos com subconjuntos hardcoded de variáveis. A fonte canônica da verdade é exclusivamente `/data/config.env` (servidor) e `config.env` (local).
+   - No servidor, `/home/umbrel/umbrelos-scripts/.env` e as stacks centrais de infraestrutura (`management`, `arr-stack`, `betor`, `tunnels`) utilizam symlinks apontando diretamente para `/data/config.env`.
+   - Scripts de orquestração (`homelab-daemon.sh`, `homelab_atualizar_stacks.sh`, `04_docker_custom_stacks.sh`, etc.) devem invocar o Compose passando explicitamente `--env-file "$ENV_FILE"`.
 

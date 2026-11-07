@@ -106,24 +106,27 @@ Este documento centraliza todas as pendências identificadas, pontos de atençã
 
 ---
 
-## 🚨 Issue #1 (Pendente): Unificação das Variáveis de Ambiente (`.env` vs `config.env`)
+## 🎯 Issue #1 (GitHub #1): Unificação das Variáveis de Ambiente (`.env` vs `config.env`) (CONCLUÍDO / HOMOLOGADO ✅)
 
-### 📌 Contexto e Problema Identificado:
-- Atualmente coexistem dois arquivos de variáveis no ambiente do servidor:
-  1. `/data/config.env` (e `config.env` local): Fonte canônica da verdade do sistema Homelab (variáveis de rede, senhas, UUIDs dos discos, tokens zrok, caminhos persistentes).
-  2. `/home/umbrel/umbrelos-scripts/.env`: Arquivo secundário gerado por `04_docker_custom_stacks.sh` contendo um subconjunto de variáveis para alimentar os arquivos `docker-compose.yml`.
-- Essa duplicidade gerou problemas na prática:
-  - Variáveis sensíveis como `${SYSTEM_PASSWORD}` e `${SAMBA_USER_1}` não estavam presentes no `.env` do Compose, gerando o aviso `The "SYSTEM_PASSWORD" variable is not set. Defaulting to a blank string.` e deixando o basic-auth dos túneis zrok vulnerável com senha vazia até a correção recente.
-  - Risco de dessincronização entre as configurações do host e as portas/caminhos das stacks Docker.
-
-### 🎯 Proposta de Solução:
-1. **Unificar no `config.env` / `/data/config.env`:**
-   - Fazer com que o `config.env.example` e o `config.env` sejam os **únicos** templates e arquivos de configuração de todo o projeto.
-   - Adicionar ao `config.env.example` todas as variáveis consumidas pelas stacks Docker Compose (`DOCKGE_PORT`, `MEDIA_DIR`, `TIMEZONE`, etc.).
-2. **Apontar Docker Compose para o arquivo persistente:**
-   - Nos scripts de orquestração (`homelab_atualizar_stacks.sh`, `homelab-daemon.sh`, etc.), utilizar `--env-file /data/config.env` (ou criar um symlink automático `/home/umbrel/umbrelos-scripts/.env -> /data/config.env`).
-3. **Eliminar a geração redundante:**
-   - Remover a rotina legada em `04_docker_custom_stacks.sh` que tentava manter um `.env` paralelo e estático.
+### 📌 Status
+- **Status:** **Resolvido e Homologado em Produção no umbrelOS!** 🎉
+- **Causa Raiz Identificada:**
+  - Existência de dois arquivos redundantes (`/data/config.env` canônico e `/home/umbrel/umbrelos-scripts/.env` estático gerado por script).
+  - O arquivo `.env` secundário continha um subconjunto estático de variáveis, desatualizado desde a época do MergerFS (`/mnt/storage`), e omitia senhas e credenciais (`SYSTEM_PASSWORD`, `KAMILA_PASSWORD`, `SAMBA_USER_1`, `BETOR_MONGO_*`), disparando o aviso do Docker Compose: `The "SYSTEM_PASSWORD" variable is not set. Defaulting to a blank string.`.
+- **Solução Implementada e Homologada:**
+  1. **Fonte Única da Verdade (`config.env` / `/data/config.env`):**
+     - O arquivo `config.env.example` e o `config.env` foram atualizados com 100% das variáveis necessárias (`BETOR_MONGO_USER`, `BETOR_MONGO_PASSWORD`, `STORAGE_BASE_DIR`, `USER_1_DIR`, `USER_2_DIR`, etc.).
+     - As variáveis canônicas foram sincronizadas com o `/data/config.env` no servidor, mantendo as permissões de segurança restritas (`chmod 644`).
+  2. **Arquitetura de Symlink Transparente:**
+     - `/home/umbrel/umbrelos-scripts/.env` agora é um symlink dinâmico apontando diretamente para `/data/config.env` (`ln -sfn /data/config.env .env`).
+     - Subpastas das stacks de infraestrutura (`compose/management/.env`, `compose/arr-stack/.env`, `compose/betor/.env`, `compose/tunnels/.env`) também receberam symlinks apontando para `/data/config.env`, permitindo execuções diretas de `docker compose` pelo terminal ou pelo Dockge sem variáveis faltantes.
+     - Stacks independentes com segredos próprios (`karteman`, `verifica-nomes-diarios-oficiais`, `paulo-investimentos-pessoais`) preservaram seus arquivos `.env` privados sem interferência.
+  3. **Eliminação de Geração Redundante:**
+     - A geração estática via `cat <<EOF > "$ENV_FILE"` em `scripts/setup/04_docker_custom_stacks.sh` foi completamente removida.
+     - Todos os scripts de orquestração (`homelab-daemon.sh`, `homelab_atualizar_stacks.sh`, `04_docker_custom_stacks.sh`, `start_zrok_tunnels.sh`) agora consom `$ENV_FILE` canônico e passam explicitamente `--env-file "$ENV_FILE"`.
+  4. **Blindagem e Testes Automatizados:**
+     - **Unitário (`tests/unit/test_config_consistency.py`):** Criado `test_05_unified_env_architecture_and_no_legacy_dotenv_generation` para impedir regressão de arquivos `.env` hardcoded.
+     - **Integração Remota (`tests/integration/test_config_unification.sh`):** Valida a presença das novas variáveis no servidor, a integridade dos symlinks e executa `docker compose config` em todas as stacks para atestar a ausência completa de warnings. 100% dos 14 testes passaram com sucesso!
 
 ---
 

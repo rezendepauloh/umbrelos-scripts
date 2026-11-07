@@ -42,16 +42,26 @@ if [ -f /data/config.env ]; then
     set -a
     source /data/config.env
     set +a
+    ENV_FILE="/data/config.env"
+elif [ -f /home/umbrel/umbrelos-scripts/config.env ]; then
+    set -a
+    source /home/umbrel/umbrelos-scripts/config.env
+    set +a
+    ENV_FILE="/home/umbrel/umbrelos-scripts/config.env"
+else
+    ENV_FILE="/data/config.env"
 fi
 
+# Garantir symlinks unificados de .env apontando para o config.env canônico
+ln -sfn "$ENV_FILE" /home/umbrel/umbrelos-scripts/.env 2>/dev/null || true
+
 COMPOSE_BASE="/home/umbrel/umbrelos-scripts/compose"
-ENV_FILE="/home/umbrel/umbrelos-scripts/.env"
 if [ ! -d "$COMPOSE_BASE" ]; then
     echo "Diretório de stacks $COMPOSE_BASE não encontrado."
     exit 1
 fi
 
-STACKS=("management" "arr-stack" "tunnels")
+STACKS=("management" "arr-stack" "tunnels" "betor")
 
 for stack in "${STACKS[@]}"; do
     STACK_DIR="$COMPOSE_BASE/$stack"

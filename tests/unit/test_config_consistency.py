@@ -34,7 +34,21 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
             "KAMILA_PASSWORD",
             "DISK1_MOUNT",
             "DISK2_MOUNT",
-            "DISK3_MOUNT"
+            "DISK3_MOUNT",
+            "TIMEZONE",
+            "DOCKGE_PORT",
+            "DOZZLE_PORT",
+            "UPTIME_KUMA_PORT",
+            "IT_TOOLS_PORT",
+            "SYNCTHING_WEB_PORT",
+            "HOMELAB_DOMAIN",
+            "NPM_WEB_PORT",
+            "NPM_HTTP_PORT",
+            "NPM_HTTPS_PORT",
+            "BETOR_MONGO_USER",
+            "BETOR_MONGO_PASSWORD",
+            "STORAGE_BASE_DIR",
+            "POPOS_HOST"
         ]
 
         for var in required_vars:
@@ -96,6 +110,34 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
         self.assertIn("sleep 60", content, "zrok-investimentos deve aguardar pelo menos 60s.")
         self.assertIn("sleep 80", content, "zrok-cloud deve aguardar pelo menos 80s.")
         self.assertIn("sleep 100", content, "zrok-jellyfin deve aguardar pelo menos 100s.")
+
+    def test_05_unified_env_architecture_and_no_legacy_dotenv_generation(self):
+        """Garante que a arquitetura unificada de variáveis (.env symlink para config.env) está em vigor."""
+        setup_04 = os.path.join(ROOT_DIR, 'scripts', 'setup', '04_docker_custom_stacks.sh')
+        daemon_sh = os.path.join(ROOT_DIR, 'scripts', 'daemons', 'homelab-daemon.sh')
+        update_stacks_sh = os.path.join(ROOT_DIR, 'scripts', 'utils', 'homelab_atualizar_stacks.sh')
+
+        self.assertTrue(os.path.exists(setup_04), "04_docker_custom_stacks.sh deve existir.")
+        self.assertTrue(os.path.exists(daemon_sh), "homelab-daemon.sh deve existir.")
+        self.assertTrue(os.path.exists(update_stacks_sh), "homelab_atualizar_stacks.sh deve existir.")
+
+        # 1. 04_docker_custom_stacks.sh NÃO deve gerar .env estático hardcoded
+        with open(setup_04, 'r', encoding='utf-8') as f:
+            setup_04_content = f.read()
+        self.assertNotIn('cat <<EOF > "$ENV_FILE"', setup_04_content, "04_docker_custom_stacks.sh não deve gerar .env paralelo hardcoded.")
+        self.assertIn('ln -sfn "${ENV_FILE}" "${SCRIPT_DIR}/.env"', setup_04_content, "04_docker_custom_stacks.sh deve criar symlink para o config canônico.")
+
+        # 2. homelab-daemon.sh deve usar ENV_FILE unificado
+        with open(daemon_sh, 'r', encoding='utf-8') as f:
+            daemon_content = f.read()
+        self.assertIn('docker compose --env-file "$ENV_FILE" up -d', daemon_content, "homelab-daemon.sh deve invocar docker compose com --env-file $ENV_FILE.")
+        self.assertNotIn('--env-file /home/umbrel/umbrelos-scripts/.env', daemon_content, "homelab-daemon.sh não deve apontar para o antigo .env estático.")
+
+        # 3. homelab_atualizar_stacks.sh deve usar ENV_FILE unificado
+        with open(update_stacks_sh, 'r', encoding='utf-8') as f:
+            update_content = f.read()
+        self.assertIn('docker compose --env-file "$ENV_FILE"', update_content, "homelab_atualizar_stacks.sh deve usar ENV_FILE.")
+        self.assertIn('ln -sfn "$ENV_FILE"', update_content, "homelab_atualizar_stacks.sh deve garantir symlink de .env.")
 
 
 if __name__ == '__main__':

@@ -19,11 +19,25 @@
 #   6. Sobe todas as Docker Stacks customizadas (Management, Arr-Stack, BeTor).
 # ==============================================================================
 
-# Carregar configurações do Homelab
+# Carregar configurações do Homelab e unificar variáveis de ambiente
+ENV_FILE="/data/config.env"
 if [ -f "/data/config.env" ]; then
     source "/data/config.env"
 elif [ -f "/home/umbrel/umbrelos-scripts/config.env" ]; then
+    ENV_FILE="/home/umbrel/umbrelos-scripts/config.env"
     source "/home/umbrel/umbrelos-scripts/config.env"
+fi
+
+# Garantir symlinks unificados de .env apontando para o config.env canônico
+if [ -d "/home/umbrel/umbrelos-scripts" ] && [ -f "$ENV_FILE" ]; then
+    ln -sfn "$ENV_FILE" /home/umbrel/umbrelos-scripts/.env 2>/dev/null || true
+    for stack_dir in /home/umbrel/umbrelos-scripts/compose/*; do
+        if [ -d "$stack_dir" ] && [ -f "$stack_dir/docker-compose.yml" ]; then
+            if [ ! -f "$stack_dir/.env" ] || [ -L "$stack_dir/.env" ]; then
+                ln -sfn "$ENV_FILE" "$stack_dir/.env" 2>/dev/null || true
+            fi
+        fi
+    done
 fi
 
 LOG="/data/homelab-daemon.log"
@@ -203,16 +217,16 @@ for j in {1..60}; do
 
         echo "Subindo stacks customizadas..."
         if [ -d "/home/umbrel/umbrelos-scripts/compose/management" ]; then
-            cd /home/umbrel/umbrelos-scripts/compose/management && docker compose --env-file /home/umbrel/umbrelos-scripts/.env up -d || true
+            cd /home/umbrel/umbrelos-scripts/compose/management && docker compose --env-file "$ENV_FILE" up -d || true
         fi
         if [ -d "/home/umbrel/umbrelos-scripts/compose/tunnels" ]; then
-            cd /home/umbrel/umbrelos-scripts/compose/tunnels && docker compose --env-file /data/config.env up -d || true
+            cd /home/umbrel/umbrelos-scripts/compose/tunnels && docker compose --env-file "$ENV_FILE" up -d || true
         fi
         if [ -d "/home/umbrel/umbrelos-scripts/compose/arr-stack" ]; then
-            cd /home/umbrel/umbrelos-scripts/compose/arr-stack && docker compose --env-file /home/umbrel/umbrelos-scripts/.env up -d || true
+            cd /home/umbrel/umbrelos-scripts/compose/arr-stack && docker compose --env-file "$ENV_FILE" up -d || true
         fi
         if [ -d "/home/umbrel/umbrelos-scripts/compose/betor" ]; then
-            cd /home/umbrel/umbrelos-scripts/compose/betor && docker compose --env-file /home/umbrel/umbrelos-scripts/.env up -d || true
+            cd /home/umbrel/umbrelos-scripts/compose/betor && docker compose --env-file "$ENV_FILE" up -d || true
         fi
         if [ -d "/home/umbrel/umbrelos-scripts/compose/karteman" ]; then
             cd /home/umbrel/umbrelos-scripts/compose/karteman && docker compose --env-file /home/umbrel/umbrelos-scripts/compose/karteman/.env up -d || true

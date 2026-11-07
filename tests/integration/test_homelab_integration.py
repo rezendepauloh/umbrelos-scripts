@@ -48,6 +48,10 @@ class TestHomelabIntegration(unittest.TestCase):
         """Valida acesso aos túneis públicos zrok v2 e conectividade Tailscale."""
         self._run_sh_test('test_remote_tunnels.sh')
 
+    def test_06_config_unification(self):
+        """Valida a unificação de variáveis (.env symlink para /data/config.env) e ausência de warnings."""
+        self._run_sh_test('test_config_unification.sh')
+
 
 if __name__ == '__main__':
     unittest.main()

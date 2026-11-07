@@ -35,40 +35,32 @@ if ! docker network inspect homelab_network >/dev/null 2>&1; then
     docker network create homelab_network
 fi
 
-# Criar arquivo .env unificado para as stacks
-ENV_FILE="${SCRIPT_DIR}/.env"
-log_info "Sincronizando variáveis em ${ENV_FILE}..."
+# Definir arquivo canônico de variáveis de ambiente do Homelab
+ENV_FILE="/data/config.env"
+if [[ ! -f "$ENV_FILE" ]]; then
+    ENV_FILE="${SCRIPT_DIR}/config.env"
+fi
 
-cat <<EOF > "$ENV_FILE"
-TIMEZONE=${TIMEZONE}
-MEDIA_DIR=${MEDIA_DIR}
-MOVIES_DIR=${MOVIES_DIR}
-SERIES_DIR=${SERIES_DIR}
-MUSIC_DIR=${MUSIC_DIR}
-TORRENTS_DIR=${TORRENTS_DIR}
-IMMICH_UPLOAD_DIR=${IMMICH_UPLOAD_DIR}
-NEXTCLOUD_DATA_DIR=${NEXTCLOUD_DATA_DIR}
-POPOS_HOST=${POPOS_HOST:-}
-STORAGE_BASE_DIR=${STORAGE_BASE_DIR:-${DISK2_MOUNT:-/home/umbrel/umbrel/external/disk2}}
-DOCKGE_PORT=${DOCKGE_PORT}
-UPTIME_KUMA_PORT=${UPTIME_KUMA_PORT}
-IT_TOOLS_PORT=${IT_TOOLS_PORT}
-SYNCTHING_WEB_PORT=${SYNCTHING_WEB_PORT}
-SYNCTHING_TRANSFER_PORT=${SYNCTHING_TRANSFER_PORT}
-SYNCTHING_DISCOVERY_PORT=${SYNCTHING_DISCOVERY_PORT}
-HOMELAB_DOMAIN=${HOMELAB_DOMAIN:-pk.local}
-NPM_WEB_PORT=${NPM_WEB_PORT:-81}
-NPM_HTTP_PORT=${NPM_HTTP_PORT:-8088}
-NPM_HTTPS_PORT=${NPM_HTTPS_PORT:-8443}
-JELLYSEERR_PORT=${JELLYSEERR_PORT}
-RADARR_PORT=${RADARR_PORT}
-SONARR_PORT=${SONARR_PORT}
-BAZARR_PORT=${BAZARR_PORT}
-PROWLARR_PORT=${PROWLARR_PORT}
-JACKETT_PORT=${JACKETT_PORT}
-QBITTORRENT_WEB_PORT=${QBITTORRENT_WEB_PORT}
-QBITTORRENT_TORRENT_PORT=${QBITTORRENT_TORRENT_PORT}
-EOF
+if [[ ! -f "$ENV_FILE" ]]; then
+    log_error "Arquivo canônico de configuração não encontrado (esperado /data/config.env ou ${SCRIPT_DIR}/config.env)."
+    exit 1
+fi
+
+log_info "Utilizando variáveis de ambiente canônicas de: ${ENV_FILE}"
+
+# Garantir symlink unificado .env -> config.env na raiz do projeto
+ln -sfn "${ENV_FILE}" "${SCRIPT_DIR}/.env"
+log_info "Symlink configurado: ${SCRIPT_DIR}/.env -> ${ENV_FILE}"
+
+# Garantir symlinks nas stacks customizadas que consom a infraestrutura central
+for stack_dir in "${SCRIPT_DIR}"/compose/*; do
+    if [[ -d "$stack_dir" && -f "$stack_dir/docker-compose.yml" ]]; then
+        # Se a stack não possuir um .env próprio e independente, aponta symlink para o config.env canônico
+        if [[ ! -f "$stack_dir/.env" ]] || [[ -L "$stack_dir/.env" ]]; then
+            ln -sfn "${ENV_FILE}" "$stack_dir/.env"
+        fi
+    fi
+done
 
 # Subir Stack de Gerenciamento (Dockge, Uptime Kuma, IT-Tools)
 log_info "Inicializando Stack de Gerenciamento (Dockge, Uptime Kuma, IT-Tools)..."
@@ -204,9 +196,10 @@ Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/home/umbrel/umbrelos-scripts
 ExecStartPre=/bin/sh -c "/usr/bin/docker network inspect homelab_network >/dev/null 2>&1 || /usr/bin/docker network create homelab_network"
-ExecStart=/usr/bin/docker compose --env-file /home/umbrel/umbrelos-scripts/.env -f /home/umbrel/umbrelos-scripts/compose/management/docker-compose.yml up -d
-ExecStart=/usr/bin/docker compose --env-file /home/umbrel/umbrelos-scripts/.env -f /home/umbrel/umbrelos-scripts/compose/arr-stack/docker-compose.yml up -d
-ExecStart=/usr/bin/docker compose --env-file /home/umbrel/umbrelos-scripts/.env -f /home/umbrel/umbrelos-scripts/compose/betor/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose --env-file /data/config.env -f /home/umbrel/umbrelos-scripts/compose/management/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose --env-file /data/config.env -f /home/umbrel/umbrelos-scripts/compose/arr-stack/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose --env-file /data/config.env -f /home/umbrel/umbrelos-scripts/compose/betor/docker-compose.yml up -d
+ExecStart=/usr/bin/docker compose --env-file /data/config.env -f /home/umbrel/umbrelos-scripts/compose/tunnels/docker-compose.yml up -d
 ExecStart=/usr/bin/docker compose --env-file /home/umbrel/umbrelos-scripts/compose/karteman/.env -f /home/umbrel/umbrelos-scripts/compose/karteman/docker-compose.yml up -d
 ExecStart=/usr/bin/docker compose --env-file /home/umbrel/umbrelos-scripts/compose/verifica-nomes-diarios-oficiais/.env -f /home/umbrel/umbrelos-scripts/compose/verifica-nomes-diarios-oficiais/docker-compose.yml up -d
 ExecStart=/usr/bin/docker compose --env-file /home/umbrel/umbrelos-scripts/compose/paulo-investimentos-pessoais/.env -f /home/umbrel/umbrelos-scripts/compose/paulo-investimentos-pessoais/docker-compose.yml up -d

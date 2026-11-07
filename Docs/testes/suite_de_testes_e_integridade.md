@@ -33,7 +33,7 @@ tests/
 │
 ├── unit/                           # 🔧 TESTES UNITÁRIOS LOCAIS (Pop!_OS / Zero efeito colateral)
 │   ├── test_syntax.py              # Valida 'bash -n' em scripts, YAML do Compose e permissões (+x)
-│   └── test_config_consistency.py  # Valida consistência de config.env.example, UUIDs e ausência de senhas
+│   └── test_config_consistency.py  # Valida consistência de config.env.example, UUIDs, arquitetura unificada de .env e ausência de senhas
 │
 └── integration/                    # 🚀 TESTES DE INTEGRAÇÃO REMOTA (Mini PC 192.168.0.8 via SSH)
     ├── test_homelab_integration.py # Ponte Python para orquestrar os testes de infraestrutura
@@ -41,7 +41,8 @@ tests/
     ├── test_samba_services.sh      # Testes de daemons (smbd/nmbd/wsdd2), chattr +i e shares SMB
     ├── test_docker_stacks.sh       # Testes da homelab_network e status dos containers
     ├── test_http_endpoints.sh      # Testes de códigos HTTP nas portas das aplicações web
-    └── test_remote_tunnels.sh      # Testes dos túneis públicos zrok v2 e VPN Tailscale
+    ├── test_remote_tunnels.sh      # Testes dos túneis públicos zrok v2 e VPN Tailscale
+    └── test_config_unification.sh  # Testes da unificação .env -> config.env, symlinks e compose configs sem warnings
 ```
 
 ---
@@ -57,6 +58,7 @@ tests/
 | **Integração: Docker** | `integration/test_docker_stacks.sh` | Presença da rede Docker `homelab_network`; status `running` para Dockge, Dozzle, qBittorrent, Prowlarr, Jackett, Radarr, Sonarr, Jellyseerr, Bazarr, Karteman, Evolution API, BeTor, Diários Oficiais, Investimentos, Jellyfin, Nextcloud, Immich, Tailscale e AdGuard. |
 | **Integração: HTTP** | `integration/test_http_endpoints.sh` | Respostas HTTP válidas (`200`, `301`, `302`, `307`) em 19 portas de serviços locais (`:5001`, `:8888`, `:8085`, `:9696`, `:9117`, `:7878`, `:8989`, `:5055`, `:6767`, `:8123`, `:8091`, `:8092`, `:8093`, `:8094`, `:8096`, `:8081`, `:81`, `:8080`, `:8384`). |
 | **Integração: Túneis** | `integration/test_remote_tunnels.sh` | Resposta online e código HTTP válido para os 6 túneis zrok v2 (`umbrel-paulo`, `cloud-paulo`, `jellyfin-paulo`, `karteman-paulo`, `diarios-paulo`, `investimentos-paulo`) e conectividade da VPN Tailscale (`100.88.159.41`). |
+| **Integração: Configs** | `integration/test_config_unification.sh` | Valida integridade do `/data/config.env`, presença de variáveis do Compose, symlinks dinâmicos (`.env -> /data/config.env`) e executa `docker compose config` em todas as stacks garantindo ausência de avisos de variáveis vazias. |
 
 ---
 
