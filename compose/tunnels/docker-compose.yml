@@ -1,19 +1,5 @@
 services:
-  # 1. Painel Principal umbrelOS
-  zrok-umbrel:
-    image: openziti/zrok2:latest
-    container_name: zrok-umbrel
-    restart: on-failure:5
-    user: "1000:1000"
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        echo "zrok-umbrel iniciando...";
-        exec zrok2 share public http://172.18.0.1:80 -n public:umbrel-paulo --headless
-    volumes:
-      - /data/zrok/.zrok2:/home/ziggy/.zrok2
-
-  # 2. Plataforma Clínica Karteman (aguarda 20s)
+  # 1. Plataforma Clínica Karteman
   zrok-karteman:
     image: openziti/zrok2:latest
     container_name: zrok-karteman
@@ -22,13 +8,12 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 20;
         echo "zrok-karteman iniciando...";
         exec zrok2 share public http://karteman-app:8081 -n public:karteman-paulo --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 3. Robô Verifica Diários Oficiais (aguarda 40s)
+  # 2. Robô Verifica Diários Oficiais (aguarda 20s)
   zrok-diarios:
     image: openziti/zrok2:latest
     container_name: zrok-diarios
@@ -37,13 +22,13 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 40;
+        sleep 20;
         echo "zrok-diarios iniciando...";
         exec zrok2 share public http://verifica-diarios-app:8093 -n public:diarios-paulo --basic-auth "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}" --basic-auth "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}" --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 4. App Investimentos Pessoais (aguarda 60s)
+  # 3. App Investimentos Pessoais (aguarda 40s)
   zrok-investimentos:
     image: openziti/zrok2:latest
     container_name: zrok-investimentos
@@ -52,13 +37,13 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 60;
+        sleep 40;
         echo "zrok-investimentos iniciando...";
         exec zrok2 share public http://paulo-investimentos-app:8094 -n public:investimentos-paulo --basic-auth "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}" --basic-auth "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}" --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 5. Nextcloud (aguarda 80s)
+  # 4. Nextcloud (aguarda 60s)
   zrok-cloud:
     image: openziti/zrok2:latest
     container_name: zrok-cloud
@@ -67,13 +52,13 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 80;
+        sleep 60;
         echo "zrok-cloud iniciando...";
         exec zrok2 share public http://172.18.0.1:8081 -n public:cloud-paulo --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 6. Jellyfin (aguarda 100s)
+  # 5. Jellyfin (aguarda 80s)
   zrok-jellyfin:
     image: openziti/zrok2:latest
     container_name: zrok-jellyfin
@@ -82,7 +67,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 100;
+        sleep 80;
         echo "zrok-jellyfin iniciando...";
         exec zrok2 share public http://172.18.0.1:8096 -n public:jellyfin-paulo --headless
     volumes:

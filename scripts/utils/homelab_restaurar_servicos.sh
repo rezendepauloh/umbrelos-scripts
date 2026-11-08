@@ -135,6 +135,17 @@ run_root() {
     echo "\$SYSTEM_PASSWORD" | sudo -S sh -c "\$cmd"
 }
 
+# Helper para executar comandos docker com ou sem elevação sudo
+docker_cmd() {
+    if docker ps >/dev/null 2>&1; then
+        docker "$@"
+    elif [ -n "${SYSTEM_PASSWORD:-}" ]; then
+        echo "$SYSTEM_PASSWORD" | sudo -S docker "$@" 2>/dev/null
+    else
+        sudo docker "$@" 2>/dev/null
+    fi
+}
+
 # ------------------------------------------------------------------------------
 # 1. Rotina de Cura de Armazenamento e Montagens Zumbis
 # ------------------------------------------------------------------------------
@@ -190,18 +201,18 @@ restaurar_immich() {
     fi
 
     echo -e "  ${CYAN}[1/3] Reiniciando instâncias de banco de dados e cache (Postgres & Redis)...${NC}"
-    docker restart immich_postgres_1 immich_redis_1 >/dev/null 2>&1 || true
+    docker_cmd restart immich_postgres_1 immich_redis_1 >/dev/null 2>&1 || true
     sleep 3
 
     echo -e "  ${CYAN}[2/3] Reiniciando serviço principal (immich-server & machine-learning)...${NC}"
-    docker restart immich_machine-learning_1 immich_server_1 >/dev/null 2>&1 || true
+    docker_cmd restart immich_machine-learning_1 immich_server_1 >/dev/null 2>&1 || true
     echo -e "  ${CYAN}Aguardando 6s para aquecimento da API e carregamento das bibliotecas...${NC}"
     sleep 6
 
     # 3. Teste de Validação
     echo -e "  ${CYAN}[3/3] Validando resposta da API...${NC}"
     local code
-    code=\$(docker exec immich_server_1 curl -s -o /dev/null -w "%{http_code}" http://localhost:2283/api/server/version 2>/dev/null || echo "000")
+    code=\$(docker_cmd exec immich_server_1 curl -s -o /dev/null -w "%{http_code}" http://localhost:2283/api/server/version 2>/dev/null || echo "000")
     if [ "\$code" = "200" ]; then
         echo -e "  ${GREEN}${BOLD}✔ SUCESSO: Immich restaurado e respondendo normalmente (HTTP 200 OK)!${NC}\n"
     else
@@ -225,7 +236,7 @@ restaurar_jellyfin() {
     fi
 
     echo -e "  ${CYAN}Reiniciando container jellyfin_server_1...${NC}"
-    docker restart jellyfin_server_1 >/dev/null 2>&1 || true
+    docker_cmd restart jellyfin_server_1 >/dev/null 2>&1 || true
     sleep 4
 
     local code
@@ -241,7 +252,7 @@ restaurar_nextcloud() {
     echo -e "${BLUE}${BOLD}==> Restaurando Serviço: Nextcloud (Nuvem de Arquivos)${NC}"
 
     echo -e "  ${CYAN}Reiniciando containers nextcloud_web_1 e cron...${NC}"
-    docker restart nextcloud_web_1 nextcloud_cron_1 >/dev/null 2>&1 || true
+    docker_cmd restart nextcloud_web_1 nextcloud_cron_1 >/dev/null 2>&1 || true
     sleep 4
 
     local code
@@ -255,7 +266,7 @@ restaurar_nextcloud() {
 
 restaurar_homeassistant() {
     echo -e "${BLUE}${BOLD}==> Restaurando Serviço: Home Assistant${NC}"
-    docker restart home-assistant_server_1 >/dev/null 2>&1 || true
+    docker_cmd restart home-assistant_server_1 >/dev/null 2>&1 || true
     sleep 3
     echo -e "  ${GREEN}✔ Home Assistant reiniciado com sucesso!${NC}\n"
 }
@@ -266,7 +277,7 @@ restaurar_stack_compose() {
     echo -e "${BLUE}${BOLD}==> Restaurando Stack Compose: \${stack}${NC}"
     if [ -d "\$dir" ]; then
         cd "\$dir"
-        docker compose --env-file /data/config.env up -d --force-recreate
+        docker_cmd compose --env-file /data/config.env up -d --force-recreate
         echo -e "  ${GREEN}✔ Stack \${stack} recriada e iniciada com sucesso!${NC}\n"
     else
         echo -e "  ${RED}✖ Stack \${dir} não localizada no servidor.${NC}\n"
@@ -297,9 +308,9 @@ case "\$MODE" in
                 ;;
             *)
                 # Tenta reiniciar como container avulso do Docker
-                if docker ps -a --format '{{.Names}}' | grep -qx "\$ARG"; then
+                if docker_cmd ps -a --format '{{.Names}}' | grep -qx "\$ARG"; then
                     echo -e "${CYAN}Reiniciando container Docker avulso: \${ARG}...${NC}"
-                    docker restart "\$ARG" >/dev/null 2>&1
+                    docker_cmd restart "\$ARG" >/dev/null 2>&1
                     echo -e "${GREEN}✔ Container \${ARG} reiniciado com sucesso!${NC}\n"
                 else
                     echo -e "${RED}[!] Serviço '\${ARG}' não reconhecido.${NC}"
@@ -324,7 +335,7 @@ case "\$MODE" in
             s_dir="/home/umbrel/umbrelos-scripts/compose/\$s"
             if [ -d "\$s_dir" ]; then
                 cd "\$s_dir"
-                docker compose --env-file /data/config.env up -d || true
+                docker_cmd compose --env-file /data/config.env up -d || true
             fi
         done
         echo -e "\n${GREEN}${BOLD}✔ RESTAURAÇÃO COMPLETA FINALIZADA COM SUCESSO!${NC}\n"
@@ -341,7 +352,7 @@ case "\$MODE" in
         fi
 
         # 2. Checar Immich
-        immich_code=\$(docker exec immich_server_1 curl -s -o /dev/null -w "%{http_code}" http://localhost:2283/api/server/version 2>/dev/null || echo "000")
+        immich_code=\$(docker_cmd exec immich_server_1 curl -s -o /dev/null -w "%{http_code}" http://localhost:2283/api/server/version 2>/dev/null || echo "000")
         if [ "\$immich_code" != "200" ]; then
             echo -e "${YELLOW}➡ Immich não está saudável (HTTP \${immich_code}). Restaurando...${NC}"
             restaurar_immich
@@ -365,11 +376,11 @@ case "\$MODE" in
         fi
 
         # 5. Checar containers em loop de Restart
-        RESTARTING_CONTAINERS=\$(docker ps --filter "status=restarting" --format "{{.Names}}" 2>/dev/null || true)
+        RESTARTING_CONTAINERS=\$(docker_cmd ps --filter "status=restarting" --format "{{.Names}}" 2>/dev/null || true)
         if [ -n "\$RESTARTING_CONTAINERS" ]; then
             for rc in \$RESTARTING_CONTAINERS; do
                 echo -e "${YELLOW}➡ Container em looping de reinício detectado: \${rc}. Forçando restart...${NC}"
-                docker restart "\$rc" >/dev/null 2>&1 || true
+                docker_cmd restart "\$rc" >/dev/null 2>&1 || true
                 REPAIRED=\$((REPAIRED + 1))
             done
         fi

@@ -57,6 +57,17 @@ set -u
 
 source /data/config.env 2>/dev/null || true
 
+# Helper para executar comandos docker com ou sem elevação sudo
+docker_cmd() {
+    if docker ps >/dev/null 2>&1; then
+        docker "$@"
+    elif [ -n "${SYSTEM_PASSWORD:-}" ]; then
+        echo "$SYSTEM_PASSWORD" | sudo -S docker "$@" 2>/dev/null
+    else
+        sudo docker "$@" 2>/dev/null
+    fi
+}
+
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -129,7 +140,7 @@ fi
 # ------------------------------------------------------------------------------
 echo -e "\n${BLUE}${BOLD}[2/4] Auditoria de Containers Docker (Crash Loops & OOM):${NC}"
 
-ALL_CONTAINERS=$(docker ps -a --format '{{.Names}}|{{.Status}}|{{.State}}' 2>/dev/null || true)
+ALL_CONTAINERS=$(docker_cmd ps -a --format '{{.Names}}|{{.Status}}|{{.State}}' 2>/dev/null || true)
 
 CONTAINER_ISSUES=0
 
@@ -146,7 +157,7 @@ while IFS='|' read -r c_name c_status c_state; do
 
     # Checar se container morreu com exit code de erro (diferente de 0)
     if [ "$c_state" = "exited" ]; then
-        exit_code=$(docker inspect --format '{{.State.ExitCode}}' "$c_name" 2>/dev/null || echo "0")
+        exit_code=$(docker_cmd inspect --format '{{.State.ExitCode}}' "$c_name" 2>/dev/null || echo "0")
         if [ "$exit_code" -ne 0 ]; then
             echo -e "  ${RED}✖ [DEAD / EXIT ERROR]${NC} Container ${BOLD}${c_name}${NC} finalizou com erro (Código: ${exit_code})"
             CONTAINER_ISSUES=$((CONTAINER_ISSUES + 1))
@@ -156,7 +167,7 @@ while IFS='|' read -r c_name c_status c_state; do
     fi
 
     # Checar se container foi abatido por OOM (Out Of Memory Kill pelo Linux)
-    oom_killed=$(docker inspect --format '{{.State.OOMKilled}}' "$c_name" 2>/dev/null || echo "false")
+    oom_killed=$(docker_cmd inspect --format '{{.State.OOMKilled}}' "$c_name" 2>/dev/null || echo "false")
     if [ "$oom_killed" = "true" ]; then
         echo -e "  ${RED}✖ [OOM KILLED]${NC} Container ${BOLD}${c_name}${NC} foi morto por falta de memória RAM (Out of Memory)!"
         CONTAINER_ISSUES=$((CONTAINER_ISSUES + 1))
@@ -218,7 +229,7 @@ for entry in "${HTTP_CHECKS[@]}"; do
 
     # Para container direto do immich, usa a API interna do próprio container
     if [ "$tipo" = "container" ]; then
-        code=$(docker exec immich_server_1 curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost:2283/api/server/version 2>/dev/null || echo "000")
+        code=$(docker_cmd exec immich_server_1 curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost:2283/api/server/version 2>/dev/null || echo "000")
     else
         code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "$url" 2>/dev/null || echo "000")
     fi
@@ -283,9 +294,9 @@ for svc in "${FAILED_SERVICES[@]}"; do
         c_target="${svc#container_}"
     fi
 
-    if [ -n "$c_target" ] && docker ps -a --format '{{.Names}}' | grep -qx "$c_target"; then
+    if [ -n "$c_target" ] && docker_cmd ps -a --format '{{.Names}}' | grep -qx "$c_target"; then
         echo -e "\n  ${YELLOW}Últimos logs de erro do container ${BOLD}${c_target}${NC}:${NC}"
-        docker logs --tail 15 "$c_target" 2>&1 | sed 's/^/    | /' || true
+        docker_cmd logs --tail 15 "$c_target" 2>&1 | sed 's/^/    | /' || true
         LOGS_EXTRACTED=$((LOGS_EXTRACTED + 1))
     fi
 done

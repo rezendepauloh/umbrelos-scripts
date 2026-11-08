@@ -17,6 +17,7 @@
 | **[`homelab_auditar_zrok.sh`](scripts/utils/homelab_auditar_zrok.sh)** | Testa os 6 túneis zrok v2 e o Tailscale com códigos de retorno HTTP. | Antes de sair de casa para garantir que os links externos estão funcionando. |
 | **[`homelab_backup_pre_upgrade.sh`](scripts/utils/homelab_backup_pre_upgrade.sh)** | Snapshot completo de bancos, app-data, compose e /data no disk3 e no Pop!_OS. | Obrigatório antes de migrar versão do umbrelOS ou de apps críticos. |
 | **[`homelab_rollback.sh`](scripts/utils/homelab_rollback.sh)** | Restaura versão anterior do OS (Rugix A/B), bancos, app-data ou stacks. | Em caso de falha pós-update de OS ou corrupção de app/banco. |
+| **[`homelab_auditar_e_sincronizar_backups.sh`](scripts/utils/homelab_auditar_e_sincronizar_backups.sh)** | Compara snapshots no disk3 vs Pop!_OS, audita integridade de dumps e sincroniza via rsync com regra de retenção 7/8. | Para conferir se os backups vieram para o PC, verificar dumps de Immich/Nextcloud e sincronizar sob demanda. |
 | **[`homelab-backup-semanal.sh`](scripts/utils/homelab-backup-semanal.sh)** | Snapshot local no disk3 e espelhamento remoto via rsync inteligente para o Pop!_OS. | Automático pelo cron ou manual se for fazer mudanças grandes. |
 
 ---
@@ -171,5 +172,26 @@ Executa a cadeia completa de auto-cura do Immich:
 ```
 Executa a faxina completa de desmontagem forçada (`umount -l`) de pontos zumbis, remonta os 3 HDs canônicos pelos seus UUIDs de hardware, re-aplica todos os bind mounts de mídia/fotos, reinicia Samba e todos os containers oficiais e customizados.
 
+---
 
+### 10. Auditoria e Sincronização Sob Demanda de Backups (disk3 <-> Pop!_OS)
+Permite auditar a qualquer momento o estado dos backups, integridade dos bancos e dos dados brutos (fotos do Immich, arquivos do Nextcloud e pastas do Samba), puxando snapshots pendentes para o seu desktop:
+
+```bash
+# 1. Apenas verificar / auditar bancos e dados brutos (sem transferir arquivos):
+./scripts/utils/homelab_auditar_e_sincronizar_backups.sh --check
+
+# 2. Auditar e sincronizar automaticamente todos os snapshots faltantes:
+./scripts/utils/homelab_auditar_e_sincronizar_backups.sh
+
+# 3. Forçar sincronização imediata com deduplicação e limpeza de retenção (7/8):
+./scripts/utils/homelab_auditar_e_sincronizar_backups.sh --sync
+```
+
+O que o script faz:
+1. **Compara:** Lista os snapshots existentes no Mini PC (`disk3`) e no Pop!_OS (`/mnt/storage_930/Backups_Homelab`).
+2. **Audita Bancos SQL:** Valida o tamanho e integridade dos dumps de **Immich** (`immich_db.sql.gz`), **Nextcloud** (`nextcloud_db.sql.gz`) e **Karteman** (`karteman_db.sql.gz`).
+3. **Audita Dados Brutos de Usuários:** Valida tamanho e presença de **Fotos/Vídeos do Immich** (`immich_photos/`), **Arquivos do Nextcloud** (`nextcloud_users/`) e **Pastas Compartilhadas Samba** (`shared/`), comparando com o tamanho ativo no `disk2`.
+4. **Sincronização Inteligente:** Usa `rsync` com `--link-dest` (deduplicação via hardlinks) e `sudo rsync` para transferir apenas os blocos alterados de fotos e documentos com permissões preservadas.
+5. **Política de 7/8 Snapshots:** Mantém exatamente os 7 backups mais recentes; ao sincronizar o 8º, remove automaticamente o snapshot mais antigo tanto local quanto remotamente.
 

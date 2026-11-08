@@ -67,16 +67,45 @@ if docker ps --format '{{.Names}}' | grep -q "nextcloud_db_1"; then
     docker exec nextcloud_db_1 mariadb-dump -u root -pmoneyprintergobrrr --all-databases 2>/dev/null | gzip > "${LOCAL_DEST}/databases/nextcloud_db.sql.gz" || echo "    [!] Falha no dump do Nextcloud"
 fi
 
-# Karteman PostgreSQL
+# Karteman PostgreSQL & SQLite
 if docker ps --format '{{.Names}}' | grep -q "karteman-postgres"; then
     echo "    -> Dump do Karteman PostgreSQL..."
     docker exec karteman-postgres pg_dumpall -U postgres 2>/dev/null | gzip > "${LOCAL_DEST}/databases/karteman_db.sql.gz" || true
+fi
+if [ -f "/home/umbrel/umbrelos-scripts/compose/karteman/data/karteman.db" ]; then
+    echo "    -> Backup do Karteman SQLite (karteman.db)..."
+    gzip -c "/home/umbrel/umbrelos-scripts/compose/karteman/data/karteman.db" > "${LOCAL_DEST}/databases/karteman_sqlite.db.gz" 2>/dev/null || true
+fi
+
+# Paulo Investimentos Pessoais (SQLite investimentos.db)
+if [ -f "/home/umbrel/umbrelos-scripts/compose/paulo-investimentos-pessoais/data/investimentos.db" ]; then
+    echo "    -> Backup do Paulo Investimentos (investimentos.db)..."
+    gzip -c "/home/umbrel/umbrelos-scripts/compose/paulo-investimentos-pessoais/data/investimentos.db" > "${LOCAL_DEST}/databases/investimentos_pessoais.db.gz" 2>/dev/null || true
+fi
+
+# Verifica Nomes Diários Oficiais (SQLite results.db)
+if [ -f "/home/umbrel/umbrelos-scripts/compose/verifica-nomes-diarios-oficiais/data/results.db" ]; then
+    echo "    -> Backup do Verifica Diários Oficiais (results.db)..."
+    gzip -c "/home/umbrel/umbrelos-scripts/compose/verifica-nomes-diarios-oficiais/data/results.db" > "${LOCAL_DEST}/databases/verifica_diarios.db.gz" 2>/dev/null || true
 fi
 
 # Jellyfin Database
 if [[ -f "/home/umbrel/umbrel/app-data/jellyfin/data/data/jellyfin.db" ]]; then
     echo "    -> Cópia segura do sqlite do Jellyfin..."
     cp "/home/umbrel/umbrel/app-data/jellyfin/data/data/jellyfin.db" "${LOCAL_DEST}/databases/jellyfin.db" 2>/dev/null || true
+fi
+
+# Home Assistant (Banco SQLite + Configs completas / automations / custom_components / HACS)
+if [[ -d "/home/umbrel/umbrel/app-data/home-assistant/data" ]]; then
+    echo "    -> Backup completo do Home Assistant (Configs + HACS + SQLite)..."
+    mkdir -p "${LOCAL_DEST}/configs/homeassistant"
+    # Banco SQLite compactado
+    if [[ -f "/home/umbrel/umbrel/app-data/home-assistant/data/home-assistant_v2.db" ]]; then
+        gzip -c "/home/umbrel/umbrel/app-data/home-assistant/data/home-assistant_v2.db" > "${LOCAL_DEST}/databases/homeassistant_v2.db.gz" 2>/dev/null || true
+    fi
+    # Arquivos essenciais do Home Assistant (YAMLs, automações, custom_components/HACS)
+    rsync -a --exclude="*.log*" --exclude="*.db-wal*" --exclude="*.db-shm*" --exclude="home-assistant_v2.db" \
+        /home/umbrel/umbrel/app-data/home-assistant/data/ "${LOCAL_DEST}/configs/homeassistant/" 2>/dev/null || true
 fi
 
 # ------------------------------------------------------------------------------
@@ -88,26 +117,42 @@ echo "[+] 2/4 Sincronizando dados essenciais de usuários, fotos e configuraçõ
 rsync -a /data/samba/smb.conf "${LOCAL_DEST}/configs/" 2>/dev/null || true
 rsync -a /data/config.env "${LOCAL_DEST}/configs/" 2>/dev/null || true
 
-# Compose das stacks customizadas
+# Compose das stacks customizadas (com exclusão inteligente de dados voláteis/pesados dispensáveis)
 if [[ -d "/home/umbrel/umbrelos-scripts/compose" ]]; then
-    rsync -a --delete /home/umbrel/umbrelos-scripts/compose/ "${LOCAL_DEST}/custom_stacks/"
+    echo "    -> Sincronizando custom_stacks (excluindo node_modules, caches e temporários)..."
+    rsync -a --delete \
+        --exclude="node_modules" \
+        --exclude=".venv" \
+        --exclude="__pycache__" \
+        --exclude="*.pyc" \
+        --exclude=".git" \
+        --exclude=".cache" \
+        --exclude="*.tmp" \
+        /home/umbrel/umbrelos-scripts/compose/ "${LOCAL_DEST}/custom_stacks/"
 fi
 
 # Usuários e Arquivos Compartilhados do disk2 (Nextcloud / Samba)
+PREV_LOCAL_DISK3=$(ls -dt "${DISK3_BACKUPS}"/backup_* 2>/dev/null | grep -v "${LOCAL_DEST}" | head -n 1 || true)
+LINK_LOCAL_OPT=""
+if [[ -n "$PREV_LOCAL_DISK3" && -d "$PREV_LOCAL_DISK3" ]]; then
+    LINK_LOCAL_OPT="--link-dest=${PREV_LOCAL_DISK3}"
+    echo "    -> Deduplicação ativada no disk3 via hardlinks com: $(basename "$PREV_LOCAL_DISK3")"
+fi
+
 if [[ -d "/home/umbrel/umbrel/external/disk2/users" ]]; then
     echo "    -> Sincronizando pastas de usuários do disk2..."
-    rsync -a --delete /home/umbrel/umbrel/external/disk2/users/ "${LOCAL_DEST}/nextcloud_users/"
+    rsync -a --delete $LINK_LOCAL_OPT /home/umbrel/umbrel/external/disk2/users/ "${LOCAL_DEST}/nextcloud_users/"
 fi
 
 if [[ -d "/home/umbrel/umbrel/external/disk2/shared" ]]; then
     echo "    -> Sincronizando pasta compartilhada do disk2..."
-    rsync -a --delete /home/umbrel/umbrel/external/disk2/shared/ "${LOCAL_DEST}/shared/"
+    rsync -a --delete $LINK_LOCAL_OPT /home/umbrel/umbrel/external/disk2/shared/ "${LOCAL_DEST}/shared/"
 fi
 
 # Fotos e Uploads do Immich no disk2
 if [[ -d "/home/umbrel/umbrel/external/disk2/immich/upload" ]]; then
     echo "    -> Sincronizando fotos e vídeos do Immich (disk2)..."
-    rsync -a --delete /home/umbrel/umbrel/external/disk2/immich/upload/ "${LOCAL_DEST}/immich_photos/"
+    rsync -a --delete $LINK_LOCAL_OPT /home/umbrel/umbrel/external/disk2/immich/upload/ "${LOCAL_DEST}/immich_photos/"
 fi
 
 sync

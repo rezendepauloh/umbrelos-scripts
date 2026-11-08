@@ -49,6 +49,12 @@ if [ -n "${TIMEZONE:-}" ]; then
     timedatectl set-timezone "${TIMEZONE}" 2>/dev/null || true
 fi
 
+# 0.2 Restaurar regras de sudoers persistentes (rsync sem senha)
+if [ -f "/data/etc/sudoers.d/umbrel-rsync" ]; then
+    cp "/data/etc/sudoers.d/umbrel-rsync" "/etc/sudoers.d/umbrel-rsync" 2>/dev/null || true
+    chmod 0440 "/etc/sudoers.d/umbrel-rsync" 2>/dev/null || true
+fi
+
 # 0. Garantir IP Estático na placa de rede física
 if [ "${SET_STATIC_IP:-false}" = "true" ] && [ -n "${STATIC_IP:-}" ]; then
     NET_IF="${NETWORK_INTERFACE:-enp1s0}"
