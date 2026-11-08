@@ -123,7 +123,7 @@ if [ -n "$LATEST_DISK3" ]; then
                 fi
             done
             echo \"---ORIGEM_DISK2---\"
-            echo \"disk2_immich|\$(du -sh /home/umbrel/umbrel/external/disk2/immich/upload 2>/dev/null | cut -f1)\"
+            echo \"disk2_immich|\$(df -h /home/umbrel/umbrel/external/disk2 2>/dev/null | awk \"NR==2 {print \\\$3}\")\"
             echo \"disk2_nextcloud|\$(du -sh /home/umbrel/umbrel/external/disk2/users 2>/dev/null | cut -f1)\"
             echo \"disk2_shared|\$(du -sh /home/umbrel/umbrel/external/disk2/shared 2>/dev/null | cut -f1)\"
         ' 2>/dev/null
