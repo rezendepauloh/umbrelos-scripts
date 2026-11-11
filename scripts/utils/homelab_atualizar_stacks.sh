@@ -2,8 +2,9 @@
 # ==============================================================================
 # scripts/utils/homelab_atualizar_stacks.sh
 # ------------------------------------------------------------------------------
-# Executado a partir do Pop!_OS para atualizar de forma inteligente as stacks
-# Docker personalizadas no Mini PC (management, arr-stack, tunnels, etc.).
+# Executado a partir do Pop!_OS ou localmente no Mini PC (umbrelOS) para
+# atualizar de forma inteligente as stacks Docker personalizadas no Mini PC
+# (management, arr-stack, tunnels, etc.).
 # Só recria o que realmente tiver atualização de imagem baixada.
 # ==============================================================================
 
@@ -29,15 +30,24 @@ echo -e "${BLUE}${BOLD}=========================================================
 echo -e "${BLUE}${BOLD}===      ATUALIZADOR AUTOMÁTICO DE STACKS DOCKER DO HOMELAB        ===${NC}"
 echo -e "${BLUE}${BOLD}======================================================================${NC}"
 
-# Teste de conexão
-if ! ssh -i "${SSH_KEY}" -o ConnectTimeout=4 -o BatchMode=yes "${SERVER_USER}@${SERVER_HOST}" "exit 0" 2>/dev/null; then
-    echo -e "${RED}[!] ERRO: Mini PC ${SERVER_HOST} inacessível via SSH.${NC}"
-    exit 1
+# Detectar se está rodando localmente no Mini PC ou remotamente no Pop!_OS
+IS_LOCAL=false
+if [[ "$(hostname 2>/dev/null)" == "umbrel" ]] || [[ -f "/data/umbrel-os" ]]; then
+    IS_LOCAL=true
 fi
 
-echo -e "${CYAN}ℹ Conectado via canal seguro (stream não-interativo)${NC}\n"
+if [ "$IS_LOCAL" = false ]; then
+    echo -e "${CYAN}ℹ Testando conexão SSH com ${SERVER_USER}@${SERVER_HOST}...${NC}"
+    if ! ssh -i "${SSH_KEY}" -o ConnectTimeout=4 -o BatchMode=yes "${SERVER_USER}@${SERVER_HOST}" "exit 0" 2>/dev/null; then
+        echo -e "${RED}[!] ERRO: Mini PC ${SERVER_HOST} inacessível via SSH.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}[✔] Conexão SSH estabelecida com sucesso!${NC}\n"
+fi
 
-ssh -o LogLevel=ERROR -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" 'bash -s' << 'REMOTESCRIPT'
+execute_update() {
+    bash -s << 'REMOTESCRIPT'
+set -u
 if [ -f /data/config.env ]; then
     set -a
     source /data/config.env
@@ -79,8 +89,14 @@ done
 
 echo -e "\n\033[1;32m[✔] Todas as stacks customizadas foram verificadas e atualizadas!\033[0m"
 REMOTESCRIPT
+}
+
+if [ "$IS_LOCAL" = true ]; then
+    execute_update
+else
+    ssh -o LogLevel=ERROR -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" "$(declare -f execute_update); execute_update"
+fi
 
 echo -e "\n${GREEN}${BOLD}======================================================================${NC}"
 echo -e "${GREEN}${BOLD} Atualização concluída com sucesso!${NC}"
 echo -e "${GREEN}${BOLD}======================================================================${NC}\n"
-

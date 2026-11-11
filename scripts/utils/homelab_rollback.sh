@@ -2,13 +2,11 @@
 # ==============================================================================
 # scripts/utils/homelab_rollback.sh
 # ------------------------------------------------------------------------------
-# Utilitário de Restauração e Rollback do Homelab umbrelOS.
-# Permite reverter:
-#   1. Rollback do Sistema Operacional (Slots A/B do Rugix OS pós-atualização falha)
-#   2. Restauração Completa do Estado via Snapshot Pré-Upgrade (Dumps + App-Data + /data)
-#   3. Restauração Granular de Banco de Dados Específico (Immich / Nextcloud / Karteman)
-#   4. Restauração de App-Data Específico (Jellyfin / Nextcloud / Home Assistant / AdGuard)
-#   5. Reversão de Imagens Docker das Stacks Customizadas (Dockge / Compose)
+# Executado a partir do Pop!_OS ou localmente no Mini PC (umbrelOS) para:
+#   1. Rollback do Sistema Operacional (Reverter Slot de Boot A/B no Rugix OS)
+#   2. Restaurar Estado Completo Pré-Upgrade (Bancos + Apps + Stacks + /data)
+#   3. Restaurar Apenas Banco de Dados Específico (Immich, Nextcloud ou Karteman)
+#   4. Restaurar Apenas Configurações (app-data) de um Serviço Oficial
 # ==============================================================================
 
 set -euo pipefail
@@ -33,11 +31,19 @@ echo -e "${BLUE}${BOLD}=========================================================
 echo -e "${BLUE}${BOLD}===         CENTRAL DE ROLLBACK E RESTAURAÇÃO DO HOMELAB           ===${NC}"
 echo -e "${BLUE}${BOLD}======================================================================${NC}"
 
-# Teste de conectividade SSH com o Mini PC
-if ! ssh -i "${SSH_KEY}" -o ConnectTimeout=4 -o BatchMode=yes "${SERVER_USER}@${SERVER_HOST}" "exit 0" 2>/dev/null; then
-    echo -e "${RED}[!] ERRO: Mini PC ${SERVER_HOST} inacessível via SSH.${NC}"
-    echo -e "    Se o sistema operacional travou e não sobe SSH, reinicie o mini PC manualmente."
-    exit 1
+# Detectar se está rodando localmente no Mini PC ou remotamente no Pop!_OS
+IS_LOCAL=false
+if [[ "$(hostname 2>/dev/null)" == "umbrel" ]] || [[ -f "/data/umbrel-os" ]]; then
+    IS_LOCAL=true
+fi
+
+# Teste de conectividade SSH com o Mini PC se for remoto
+if [ "$IS_LOCAL" = false ]; then
+    if ! ssh -i "${SSH_KEY}" -o ConnectTimeout=4 -o BatchMode=yes "${SERVER_USER}@${SERVER_HOST}" "exit 0" 2>/dev/null; then
+        echo -e "${RED}[!] ERRO: Mini PC ${SERVER_HOST} inacessível via SSH.${NC}"
+        echo -e "    Se o sistema operacional travou e não sobe SSH, reinicie o mini PC manualmente."
+        exit 1
+    fi
 fi
 
 echo -e "${CYAN}Selecione o tipo de Rollback que deseja realizar:${NC}\n"
@@ -55,7 +61,9 @@ if [[ "$OPTION" == "0" ]]; then
     exit 0
 fi
 
-ssh -o LogLevel=ERROR -t -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" "bash -s -- $OPTION" << 'REMOTESCRIPT'
+execute_rollback() {
+    local opt="$1"
+    bash -s -- "$opt" << 'REMOTESCRIPT'
 set -euo pipefail
 
 OPTION="$1"
@@ -110,52 +118,53 @@ case "$OPTION" in
             exit 0
         fi
 
-        # 1. Restaurar App Data
+        echo -e "\n1. Restaurando banco do Nextcloud..."
+        NEXTCLOUD_DB=$(echo "$SYSTEM_PASSWORD" | sudo -S docker ps -q -f name=nextcloud_db_1 2>/dev/null | head -n 1 || true)
+        if [ -n "$NEXTCLOUD_DB" ] && [ -f "$SNAP_PATH/databases/nextcloud_db.sql.gz" ]; then
+            gunzip -c "$SNAP_PATH/databases/nextcloud_db.sql.gz" | echo "$SYSTEM_PASSWORD" | sudo -S docker exec -i "$NEXTCLOUD_DB" mysql -u root 2>/dev/null || true
+            echo -e "\033[1;32m[✔] Banco do Nextcloud restaurado com sucesso!\033[0m"
+        fi
+
+        echo -e "\n2. Restaurando banco do Immich..."
+        IMMICH_PG=$(echo "$SYSTEM_PASSWORD" | sudo -S docker ps -q -f name=immich_postgres_1 2>/dev/null | head -n 1 || true)
+        if [ -n "$IMMICH_PG" ] && [ -f "$SNAP_PATH/databases/immich_db.sql.gz" ]; then
+            gunzip -c "$SNAP_PATH/databases/immich_db.sql.gz" | echo "$SYSTEM_PASSWORD" | sudo -S docker exec -i "$IMMICH_PG" psql -U postgres 2>/dev/null || true
+            echo -e "\033[1;32m[✔] Banco do Immich restaurado com sucesso!\033[0m"
+        fi
+
+        echo -e "\n3. Restaurando configurações (app-data)..."
         if [ -d "$SNAP_PATH/app_data" ]; then
-            echo -e "\n\033[1;36m[1/4] Restaurando app-data dos serviços oficiais...\033[0m"
-            echo "$SYSTEM_PASSWORD" | sudo -S rsync -av --exclude='immich/data/upload' --exclude='nextcloud/data' "$SNAP_PATH/app_data/" /home/umbrel/umbrel/app-data/ 2>&1 | grep -v 'password for umbrel' || true
+            echo "$SYSTEM_PASSWORD" | sudo -S rsync -av --delete \
+                --exclude='immich/data/upload' \
+                --exclude='jellyfin/data/transcodes' \
+                "$SNAP_PATH/app_data/" "/home/umbrel/umbrel/app-data/" 2>&1 | grep -v 'password for umbrel' || true
+            echo -e "\033[1;32m[✔] App-data restaurado!\033[0m"
         fi
 
-        # 2. Restaurar Custom Stacks
-        if [ -d "$SNAP_PATH/custom_stacks" ]; then
-            echo -e "\n\033[1;36m[2/4] Restaurando configurações das stacks Docker...\033[0m"
-            echo "$SYSTEM_PASSWORD" | sudo -S rsync -av "$SNAP_PATH/custom_stacks/" /home/umbrel/umbrelos-scripts/compose/ 2>&1 | grep -v 'password for umbrel' || true
+        echo -e "\n4. Restaurando Stacks Docker Compose..."
+        if [ -d "$SNAP_PATH/compose" ]; then
+            rsync -av "$SNAP_PATH/compose/" "/home/umbrel/umbrelos-scripts/compose/" 2>/dev/null || true
+            echo -e "\033[1;32m[✔] Stacks do Compose restauradas!\033[0m"
         fi
 
-        # 3. Restaurar /data
-        if [ -d "$SNAP_PATH/system_data" ]; then
-            echo -e "\n\033[1;36m[3/4] Restaurando configurações persistentes de /data...\033[0m"
-            echo "$SYSTEM_PASSWORD" | sudo -S rsync -av --exclude='umbrel-os' "$SNAP_PATH/system_data/" /data/ 2>&1 | grep -v 'password for umbrel' || true
+        echo -e "\n5. Restaurando diretório persistente /data..."
+        if [ -d "$SNAP_PATH/data_dir" ]; then
+            echo "$SYSTEM_PASSWORD" | sudo -S rsync -av "$SNAP_PATH/data_dir/" "/data/" 2>&1 | grep -v 'password for umbrel' || true
+            echo -e "\033[1;32m[✔] /data restaurado!\033[0m"
         fi
 
-        # 4. Restaurar Bancos
-        echo -e "\n\033[1;36m[4/4] Restaurando bancos de dados relacionais...\033[0m"
-        # Nextcloud
-        if [ -f "$SNAP_PATH/databases/nextcloud_db.sql.gz" ]; then
-            NEXTCLOUD_DB=$(echo "$SYSTEM_PASSWORD" | sudo -S docker ps -q -f name=nextcloud_db_1 2>/dev/null | head -n 1 || true)
-            if [ -n "$NEXTCLOUD_DB" ]; then
-                echo "  -> Restaurando MariaDB do Nextcloud..."
-                gunzip -c "$SNAP_PATH/databases/nextcloud_db.sql.gz" | echo "$SYSTEM_PASSWORD" | sudo -S docker exec -i "$NEXTCLOUD_DB" mysql -u root 2>/dev/null || true
-            fi
-        fi
-        # Immich
-        if [ -f "$SNAP_PATH/databases/immich_db.sql.gz" ]; then
-            IMMICH_PG=$(echo "$SYSTEM_PASSWORD" | sudo -S docker ps -q -f name=immich_postgres_1 2>/dev/null | head -n 1 || true)
-            if [ -n "$IMMICH_PG" ]; then
-                echo "  -> Restaurando PostgreSQL do Immich..."
-                gunzip -c "$SNAP_PATH/databases/immich_db.sql.gz" | echo "$SYSTEM_PASSWORD" | sudo -S docker exec -i "$IMMICH_PG" psql -U postgres 2>/dev/null || true
-            fi
-        fi
-
-        echo -e "\n\033[1;32m[✔] Restauração completa finalizada! Recomendamos reiniciar o mini PC ou os containers.\033[0m"
+        echo -e "\n\033[1;32m======================================================================\033[0m"
+        echo -e "\033[1;32m=== RESTAURAÇÃO COMPLETA FINALIZADA COM SUCESSO!                    ===\033[0m"
+        echo -e "\033[1;32m======================================================================\033[0m"
         ;;
 
     3)
-        echo -e "\n\033[1;33m[!] Restaurar Apenas Banco de Dados Específico\033[0m"
+        echo -e "\n\033[1;33m[!] Restaurar Apenas um Banco de Dados Específico\033[0m"
         list_snapshots
-        read -rp "Cole o caminho do snapshot desejado: " SNAP_PATH
+        echo ""
+        read -rp "Cole o caminho completo do snapshot que contém o banco: " SNAP_PATH
         if [ ! -d "$SNAP_PATH/databases" ]; then
-            echo -e "\033[1;31mErro: Pasta de databases não encontrada em $SNAP_PATH.\033[0m"
+            echo -e "\033[1;31mErro: Diretório de bancos não encontrado em '$SNAP_PATH'.\033[0m"
             exit 1
         fi
 
@@ -205,4 +214,10 @@ case "$OPTION" in
         ;;
 esac
 REMOTESCRIPT
+}
 
+if [ "$IS_LOCAL" = true ]; then
+    execute_rollback "$OPTION"
+else
+    ssh -o LogLevel=ERROR -t -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" "$(declare -f execute_rollback); execute_rollback '$OPTION'"
+fi
