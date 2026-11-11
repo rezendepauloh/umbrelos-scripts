@@ -138,11 +138,11 @@ run_root() {
 # Helper para executar comandos docker com ou sem elevação sudo
 docker_cmd() {
     if docker ps >/dev/null 2>&1; then
-        docker "$@"
-    elif [ -n "${SYSTEM_PASSWORD:-}" ]; then
-        echo "$SYSTEM_PASSWORD" | sudo -S docker "$@" 2>/dev/null
+        docker "\$@"
+    elif [ -n "\${SYSTEM_PASSWORD:-}" ]; then
+        echo "\$SYSTEM_PASSWORD" | sudo -S docker "\$@" 2>/dev/null
     else
-        sudo docker "$@" 2>/dev/null
+        sudo docker "\$@" 2>/dev/null
     fi
 }
 
@@ -200,12 +200,12 @@ restaurar_immich() {
         restaurar_discos
     fi
 
-    echo -e "  ${CYAN}[1/3] Reiniciando instâncias de banco de dados e cache (Postgres & Redis)...${NC}"
-    docker_cmd restart immich_postgres_1 immich_redis_1 >/dev/null 2>&1 || true
+    echo -e "  ${CYAN}[1/3] Iniciando/Reiniciando instâncias de banco de dados e cache (Postgres & Redis)...${NC}"
+    docker_cmd start immich_postgres_1 immich_redis_1 >/dev/null 2>&1 || docker_cmd restart immich_postgres_1 immich_redis_1 >/dev/null 2>&1 || true
     sleep 3
 
-    echo -e "  ${CYAN}[2/3] Reiniciando serviço principal (immich-server & machine-learning)...${NC}"
-    docker_cmd restart immich_machine-learning_1 immich_server_1 >/dev/null 2>&1 || true
+    echo -e "  ${CYAN}[2/3] Iniciando/Reiniciando serviço principal (immich-server & machine-learning)...${NC}"
+    docker_cmd start immich_machine-learning_1 immich_server_1 >/dev/null 2>&1 || docker_cmd restart immich_machine-learning_1 immich_server_1 >/dev/null 2>&1 || true
     echo -e "  ${CYAN}Aguardando 6s para aquecimento da API e carregamento das bibliotecas...${NC}"
     sleep 6
 
@@ -235,8 +235,8 @@ restaurar_jellyfin() {
         restaurar_discos
     fi
 
-    echo -e "  ${CYAN}Reiniciando container jellyfin_server_1...${NC}"
-    docker_cmd restart jellyfin_server_1 >/dev/null 2>&1 || true
+    echo -e "  ${CYAN}Iniciando/Reiniciando container jellyfin_server_1...${NC}"
+    docker_cmd start jellyfin_server_1 >/dev/null 2>&1 || docker_cmd restart jellyfin_server_1 >/dev/null 2>&1 || true
     sleep 4
 
     local code
@@ -251,8 +251,12 @@ restaurar_jellyfin() {
 restaurar_nextcloud() {
     echo -e "${BLUE}${BOLD}==> Restaurando Serviço: Nextcloud (Nuvem de Arquivos)${NC}"
 
-    echo -e "  ${CYAN}Reiniciando containers nextcloud_web_1 e cron...${NC}"
-    docker_cmd restart nextcloud_web_1 nextcloud_cron_1 >/dev/null 2>&1 || true
+    echo -e "  ${CYAN}Garantindo banco de dados (MariaDB & Redis) ativos...${NC}"
+    docker_cmd start nextcloud_db_1 nextcloud_redis_1 >/dev/null 2>&1 || docker_cmd restart nextcloud_db_1 nextcloud_redis_1 >/dev/null 2>&1 || true
+    sleep 2
+
+    echo -e "  ${CYAN}Iniciando/Reiniciando containers nextcloud_web_1 e cron...${NC}"
+    docker_cmd start nextcloud_web_1 nextcloud_cron_1 >/dev/null 2>&1 || docker_cmd restart nextcloud_web_1 nextcloud_cron_1 >/dev/null 2>&1 || true
     sleep 4
 
     local code
@@ -266,9 +270,9 @@ restaurar_nextcloud() {
 
 restaurar_homeassistant() {
     echo -e "${BLUE}${BOLD}==> Restaurando Serviço: Home Assistant${NC}"
-    docker_cmd restart home-assistant_server_1 >/dev/null 2>&1 || true
+    docker_cmd start home-assistant_server_1 >/dev/null 2>&1 || docker_cmd restart home-assistant_server_1 >/dev/null 2>&1 || true
     sleep 3
-    echo -e "  ${GREEN}✔ Home Assistant reiniciado com sucesso!${NC}\n"
+    echo -e "  ${GREEN}✔ Home Assistant iniciado com sucesso!${NC}\n"
 }
 
 restaurar_stack_compose() {
