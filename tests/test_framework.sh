@@ -110,9 +110,14 @@ assert_http_status() {
     local test_name="$1"
     local url="$2"
     local expected_pattern="${3:-200|301|302|307}"
+    local extra_args="${4:-}"
 
     local actual_code
-    actual_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 4 -m 6 "$url" 2>/dev/null || echo "000")
+    if [ -n "$extra_args" ]; then
+        actual_code=$(curl $extra_args -s -o /dev/null -w "%{http_code}" --connect-timeout 4 -m 6 "$url" 2>/dev/null || echo "000")
+    else
+        actual_code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 4 -m 6 "$url" 2>/dev/null || echo "000")
+    fi
 
     if [[ "$actual_code" =~ ^($expected_pattern)$ ]]; then
         assert_pass "$test_name" "HTTP $actual_code"

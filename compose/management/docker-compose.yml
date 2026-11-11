@@ -78,6 +78,28 @@ services:
       - ./data/npm/data:/data
       - ./data/npm/letsencrypt:/etc/letsencrypt
 
+  # ttyd - Terminal Web Seguro com Acesso Direto ao Host para Manutenção e Emergências
+  ttyd:
+    image: tsl0922/ttyd:alpine
+    container_name: ttyd
+    restart: unless-stopped
+    privileged: true
+    pid: host
+    ports:
+      - "${TTYD_PORT:-7681}:7681"
+    environment:
+      - TTYD_PORT=7681
+      - SYSTEM_USER=${SYSTEM_USER:-umbrel}
+      - SYSTEM_PASSWORD=${SYSTEM_PASSWORD}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        CRED_OPT=""
+        if [ -n "$$SYSTEM_USER" ] && [ -n "$$SYSTEM_PASSWORD" ]; then
+          CRED_OPT="-c $${SYSTEM_USER}:$${SYSTEM_PASSWORD}"
+        fi
+        exec ttyd $$CRED_OPT -p 7681 -W nsenter -t 1 -m -u -i -n -p -- su - $$SYSTEM_USER -c "cd /home/$$SYSTEM_USER/umbrelos-scripts && ./scripts/utils/homelab_ajuda.sh; exec bash"
+
 
 
 networks:

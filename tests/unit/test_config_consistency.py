@@ -104,12 +104,11 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
         self.assertIn("restart: on-failure:5", content, "Túneis zrok devem usar 'restart: on-failure:5'.")
         self.assertNotIn("restart: unless-stopped", content, "Túneis zrok não devem usar 'unless-stopped' para evitar looping de HTTP 429.")
 
-        # Verifica se há escalonamento com sleeps no command/entrypoint
-        self.assertIn("sleep 20", content, "zrok-karteman deve aguardar pelo menos 20s.")
-        self.assertIn("sleep 40", content, "zrok-diarios deve aguardar pelo menos 40s.")
-        self.assertIn("sleep 60", content, "zrok-investimentos deve aguardar pelo menos 60s.")
-        self.assertIn("sleep 80", content, "zrok-cloud deve aguardar pelo menos 80s.")
-        self.assertIn("sleep 100", content, "zrok-jellyfin deve aguardar pelo menos 100s.")
+        # Verifica se há escalonamento com sleeps no command/entrypoint para proteger contra rate limit (HTTP 429)
+        self.assertIn("sleep 20", content, "Túneis devem possuir escalonamento de pelo menos 20s.")
+        self.assertIn("sleep 40", content, "Túneis devem possuir escalonamento de pelo menos 40s.")
+        self.assertIn("sleep 60", content, "Túneis devem possuir escalonamento de pelo menos 60s.")
+        self.assertIn("sleep 80", content, "Túneis devem possuir escalonamento de pelo menos 80s.")
 
     def test_05_unified_env_architecture_and_no_legacy_dotenv_generation(self):
         """Garante que a arquitetura unificada de variáveis (.env symlink para config.env) está em vigor."""

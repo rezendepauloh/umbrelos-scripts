@@ -503,6 +503,7 @@ Para que você não precise de comandos complexos no terminal nem de auxílio de
 | **Syncthing Transfer** | `22000` | TCP/UDP | Transferência direta e criptografada de arquivos |
 | **Uptime Kuma** | `3001` | HTTP | Monitoramento de status de serviços |
 | **IT-Tools** | `8080` | HTTP | Ferramentas para desenvolvedores |
+| **Web Terminal (ttyd)** | `7681` | HTTP | Terminal web interativo com auto-ajuda e login seguro |
 | **Jellyseerr** | `5055` | HTTP | Solicitação e descoberta de filmes/séries |
 | **qBittorrent** | `8085` | HTTP | Web UI do cliente BitTorrent |
 | **Radarr** | `7878` | HTTP | Gerenciador de filmes |

@@ -19,6 +19,17 @@
 | **[`homelab_rollback.sh`](scripts/utils/homelab_rollback.sh)** | Restaura versão anterior do OS (Rugix A/B), bancos, app-data ou stacks. | Em caso de falha pós-update de OS ou corrupção de app/banco. |
 | **[`homelab_auditar_e_sincronizar_backups.sh`](scripts/utils/homelab_auditar_e_sincronizar_backups.sh)** | Compara snapshots no disk3 vs Pop!_OS, audita integridade de dumps e sincroniza via rsync com regra de retenção 7/8. | Para conferir se os backups vieram para o PC, verificar dumps de Immich/Nextcloud e sincronizar sob demanda. |
 | **[`homelab-backup-semanal.sh`](scripts/utils/homelab-backup-semanal.sh)** | Snapshot local no disk3 e espelhamento remoto via rsync inteligente para o Pop!_OS. | Automático pelo cron ou manual se for fazer mudanças grandes. |
+| **[`homelab_ajuda.sh`](scripts/utils/homelab_ajuda.sh)** | Painel interativo com a lista formatada de todos os utilitários de diagnóstico e recuperação rápida. | Exibido automaticamente ao abrir o Web Terminal (`ttyd`) ou via comando `ajuda`. |
+
+---
+
+## 🌐 Web Terminal Interativo (`ttyd`)
+Se você estiver longe do seu computador Pop!_OS (por exemplo, no celular, notebook da Kamila ou em outro cômodo) e precisar rodar diagnósticos ou scripts de recuperação:
+
+- **URL Local:** [http://192.168.0.8:7681](http://192.168.0.8:7681)
+- **Login Seguro:** Usuário `umbrel` e a sua senha `SYSTEM_PASSWORD`.
+- **Auto-Ajuda Integrada:** Assim que você se autentica, o terminal abre na pasta `/home/umbrel/umbrelos-scripts` e executa automaticamente o guia de utilitários na tela.
+- **Atalhos no Terminal:** Digite `ajuda` ou `homelab-ajuda` a qualquer momento para rever os comandos recomendados.
 
 ---
 
