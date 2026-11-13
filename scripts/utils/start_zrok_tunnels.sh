@@ -16,8 +16,9 @@ ENV_FILE="/data/config.env"
 
 DELAY_BETWEEN_SERVICES=30 # segundos de resfriamento entre cada túnel
 
+# Nota de Segurança: o túnel 'zrok-umbrel' foi desativado permanentemente
+# para impedir exposição do painel administrativo do umbrelOS na internet.
 SERVICES=(
-    "zrok-umbrel"
     "zrok-karteman"
     "zrok-diarios"
     "zrok-investimentos"

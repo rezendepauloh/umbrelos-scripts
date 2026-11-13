@@ -90,15 +90,15 @@ services:
     environment:
       - TTYD_PORT=7681
       - SYSTEM_USER=${SYSTEM_USER:-umbrel}
-      - SYSTEM_PASSWORD=${SYSTEM_PASSWORD}
+      - SYSTEM_PASSWORD=${SYSTEM_PASSWORD:?SYSTEM_PASSWORD obrigatoria para autenticar o terminal web ttyd}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        CRED_OPT=""
-        if [ -n "$$SYSTEM_USER" ] && [ -n "$$SYSTEM_PASSWORD" ]; then
-          CRED_OPT="-c $${SYSTEM_USER}:$${SYSTEM_PASSWORD}"
+        if [ -z "$$SYSTEM_USER" ] || [ -z "$$SYSTEM_PASSWORD" ]; then
+          echo "[ERRO CRÍTICO DE SEGURANÇA] Credenciais ausentes. Recusando iniciar ttyd sem autenticação (Fail-Closed)." >&2
+          exit 1
         fi
-        exec ttyd $$CRED_OPT -p 7681 -W nsenter -t 1 -m -u -i -n -p -- su - $$SYSTEM_USER -c "cd /home/$$SYSTEM_USER/umbrelos-scripts && ./scripts/utils/homelab_ajuda.sh; exec bash"
+        exec ttyd -c "$${SYSTEM_USER}:$${SYSTEM_PASSWORD}" -p 7681 -W nsenter -t 1 -m -u -i -n -p -- su - "$$SYSTEM_USER" -c "cd /home/$$SYSTEM_USER/umbrelos-scripts && ./scripts/utils/homelab_ajuda.sh; exec bash"
 
 
 

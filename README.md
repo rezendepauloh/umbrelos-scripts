@@ -479,8 +479,8 @@ Para que você não precise de comandos complexos no terminal nem de auxílio de
 | **Recuperar HDs e Samba** | Desmonta montagens fantasmas após oscilação USB, remonta por UUID canônico e restaura Samba/Jellyfin | `./scripts/utils/recuperar_hds_remoto.sh` |
 | **Atualizador de Stacks** | Varre as stacks Compose, baixa novas imagens e só recria os containers com novas versões | `./scripts/utils/homelab_atualizar_stacks.sh` |
 | **Faxina Docker** | Limpa imagens órfãs, volumes mortos e trunca logs excessivos (> 300MB) para liberar NVMe | `./scripts/utils/homelab_limpeza_docker.sh` |
-| **Inicializador Escalonado zrok** | Sobe os 6 túneis zrok v2 com espaçamento de segurança contra rate limits da API pública | `./scripts/utils/start_zrok_tunnels.sh` |
-| **Auditor de Túneis Remotos** | Testa a conectividade externa dos 6 túneis zrok v2 e do Tailscale em segundos | `./scripts/utils/homelab_auditar_zrok.sh` |
+| **Inicializador Escalonado zrok** | Sobe os 5 túneis públicos zrok v2 com espaçamento de segurança contra rate limits da API pública | `./scripts/utils/start_zrok_tunnels.sh` |
+| **Auditor de Túneis Remotos** | Testa a conectividade externa dos 5 túneis zrok v2, blindagem do painel e Tailscale em segundos | `./scripts/utils/homelab_auditar_zrok.sh` |
 
 > 📖 **Manual Completo de Autonomia**: Acesse [Docs/guias/guia_autonomia_e_manutencao_remota.md](Docs/guias/guia_autonomia_e_manutencao_remota.md) para detalhes de cada utilitário.
 

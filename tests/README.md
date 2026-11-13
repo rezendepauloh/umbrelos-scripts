@@ -13,14 +13,15 @@ tests/
 ├── test_framework.sh             # Biblioteca core de asserções Bash e comandos remotos
 ├── unit/                         # 🔧 Testes Unitários (Rodam no Pop!_OS sem tocar no servidor)
 │   ├── test_syntax.py            # Validação de sintaxe Bash (bash -n), Compose YAML e +x
-│   └── test_config_consistency.py# Validação de templates, AGENTS.md e UUIDs canônicos
+│   └── test_config_consistency.py# Validação de templates, AGENTS.md, UUIDs e auditoria anti-vazamento de segredos
 └── integration/                  # 🚀 Testes de Integração (Rodam no Mini PC via SSH ou localmente)
     ├── test_homelab_integration.py # Ponte Python para orquestrar os testes de infraestrutura
     ├── test_storage_and_mounts.sh  # Pontos de montagem disk1, disk2, disk3 e bind mounts
     ├── test_samba_services.sh      # Daemons smbd, nmbd, wsdd2, chattr +i e shares
     ├── test_docker_stacks.sh       # Stacks e 20+ containers Docker essenciais
-    ├── test_http_endpoints.sh      # Portas HTTP e UIs web locais
-    └── test_remote_tunnels.sh      # Túneis zrok v2 e VPN Tailscale
+    ├── test_http_endpoints.sh      # Portas HTTP, UIs web locais e autenticação do ttyd
+    ├── test_remote_tunnels.sh      # 5 túneis públicos zrok v2, Basic Auth, bloqueio do painel e VPN Tailscale
+    └── test_config_unification.sh  # Symlinks .env -> /data/config.env, permissões 600/640 e compose config
 ```
 
 ---

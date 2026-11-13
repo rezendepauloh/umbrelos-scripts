@@ -34,7 +34,9 @@ BACKUP_NAME="backup_${TIMESTAMP}"
 LOCAL_DEST="${DISK3_BACKUPS}/${BACKUP_NAME}"
 LOG_FILE="/data/homelab-backup.log"
 
-# Garantir log com permissões
+# Garantir log com permissões restritas
+touch "$LOG_FILE" 2>/dev/null || true
+chmod 640 "$LOG_FILE" 2>/dev/null || true
 exec >> "$LOG_FILE" 2>&1
 echo "========================================================================"
 echo "=== INÍCIO DA ROTINA DE BACKUP CONSOLIDADO: $(date) ==="
@@ -49,6 +51,7 @@ fi
 mkdir -p "${LOCAL_DEST}/databases"
 mkdir -p "${LOCAL_DEST}/configs"
 mkdir -p "${LOCAL_DEST}/custom_stacks"
+chmod 750 "${LOCAL_DEST}" "${LOCAL_DEST}/databases" "${LOCAL_DEST}/configs" 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
 # 1. DUMPS DOS BANCOS DE DADOS
@@ -64,7 +67,7 @@ fi
 # Nextcloud MariaDB
 if docker ps --format '{{.Names}}' | grep -q "nextcloud_db_1"; then
     echo "    -> Dump do Nextcloud MariaDB..."
-    docker exec nextcloud_db_1 mariadb-dump -u root -pmoneyprintergobrrr --all-databases 2>/dev/null | gzip > "${LOCAL_DEST}/databases/nextcloud_db.sql.gz" || echo "    [!] Falha no dump do Nextcloud"
+    docker exec nextcloud_db_1 sh -c 'mariadb-dump -u root -p"${MYSQL_ROOT_PASSWORD:-}" --all-databases 2>/dev/null || mariadb-dump -u root --all-databases 2>/dev/null' | gzip > "${LOCAL_DEST}/databases/nextcloud_db.sql.gz" || echo "    [!] Falha no dump do Nextcloud"
 fi
 
 # Karteman PostgreSQL & SQLite
@@ -116,6 +119,7 @@ echo "[+] 2/4 Sincronizando dados essenciais de usuários, fotos e configuraçõ
 # Samba & Configs do Homelab
 rsync -a /data/samba/smb.conf "${LOCAL_DEST}/configs/" 2>/dev/null || true
 rsync -a /data/config.env "${LOCAL_DEST}/configs/" 2>/dev/null || true
+chmod 600 "${LOCAL_DEST}/configs/config.env" 2>/dev/null || true
 
 # Compose das stacks customizadas (com exclusão inteligente de dados voláteis/pesados dispensáveis)
 if [[ -d "/home/umbrel/umbrelos-scripts/compose" ]]; then

@@ -19,12 +19,21 @@ services:
     container_name: zrok-diarios
     restart: on-failure:5
     user: "1000:1000"
+    environment:
+      - SAMBA_USER_1=${SAMBA_USER_1:-paulo}
+      - SAMBA_USER_2=${SAMBA_USER_2:-kamila}
+      - SYSTEM_PASSWORD=${SYSTEM_PASSWORD:?SYSTEM_PASSWORD obrigatoria para tunel publico zrok-diarios}
+      - KAMILA_PASSWORD=${KAMILA_PASSWORD:?KAMILA_PASSWORD obrigatoria para tunel publico zrok-diarios}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        if [ -z "$$SYSTEM_PASSWORD" ] || [ -z "$$KAMILA_PASSWORD" ]; then
+          echo "[ERRO CRÍTICO DE SEGURANÇA] Credenciais Basic Auth vazias. Abortando túnel público zrok-diarios (Fail-Closed)." >&2
+          exit 1
+        fi
         sleep 20;
         echo "zrok-diarios iniciando...";
-        exec zrok2 share public http://verifica-diarios-app:8093 -n public:diarios-paulo --basic-auth "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}" --basic-auth "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}" --headless
+        exec zrok2 share public http://verifica-diarios-app:8093 -n public:diarios-paulo --basic-auth "$${SAMBA_USER_1}:$${SYSTEM_PASSWORD}" --basic-auth "$${SAMBA_USER_2}:$${KAMILA_PASSWORD}" --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
@@ -34,12 +43,21 @@ services:
     container_name: zrok-investimentos
     restart: on-failure:5
     user: "1000:1000"
+    environment:
+      - SAMBA_USER_1=${SAMBA_USER_1:-paulo}
+      - SAMBA_USER_2=${SAMBA_USER_2:-kamila}
+      - SYSTEM_PASSWORD=${SYSTEM_PASSWORD:?SYSTEM_PASSWORD obrigatoria para tunel publico zrok-investimentos}
+      - KAMILA_PASSWORD=${KAMILA_PASSWORD:?KAMILA_PASSWORD obrigatoria para tunel publico zrok-investimentos}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        if [ -z "$$SYSTEM_PASSWORD" ] || [ -z "$$KAMILA_PASSWORD" ]; then
+          echo "[ERRO CRÍTICO DE SEGURANÇA] Credenciais Basic Auth vazias. Abortando túnel público zrok-investimentos (Fail-Closed)." >&2
+          exit 1
+        fi
         sleep 40;
         echo "zrok-investimentos iniciando...";
-        exec zrok2 share public http://paulo-investimentos-app:8094 -n public:investimentos-paulo --basic-auth "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}" --basic-auth "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}" --headless
+        exec zrok2 share public http://paulo-investimentos-app:8094 -n public:investimentos-paulo --basic-auth "$${SAMBA_USER_1}:$${SYSTEM_PASSWORD}" --basic-auth "$${SAMBA_USER_2}:$${KAMILA_PASSWORD}" --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 

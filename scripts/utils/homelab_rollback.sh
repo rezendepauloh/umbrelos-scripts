@@ -61,6 +61,11 @@ if [[ "$OPTION" == "0" ]]; then
     exit 0
 fi
 
+if [[ ! "$OPTION" =~ ^[1-4]$ ]]; then
+    echo -e "${RED}[!] ERRO: Opção inválida ('${OPTION}'). Digite um número de 0 a 4.${NC}" >&2
+    exit 1
+fi
+
 execute_rollback() {
     local opt="$1"
     bash -s -- "$opt" << 'REMOTESCRIPT'
@@ -74,6 +79,16 @@ if [ -f /data/config.env ]; then
 fi
 
 BACKUP_DIR="/home/umbrel/umbrel/external/disk3/backups"
+
+validate_snap_path() {
+    local input_path="$1"
+    local resolved
+    resolved=$(realpath -m "$input_path" 2>/dev/null || echo "")
+    if [[ -z "$resolved" ]] || [[ "$resolved" != "${BACKUP_DIR}/"* ]] || [[ ! -d "$resolved" ]]; then
+        echo -e "\033[1;31m[!] ERRO DE SEGURANÇA: O caminho '$input_path' é inválido ou está fora do diretório canônico (${BACKUP_DIR}).\033[0m" >&2
+        exit 1
+    fi
+}
 
 list_snapshots() {
     echo -e "\n\033[1;36mSnapshots pré-upgrade disponíveis no disk3:\033[0m"
@@ -106,10 +121,7 @@ case "$OPTION" in
         list_snapshots
         echo ""
         read -rp "Cole o caminho completo do snapshot que deseja restaurar: " SNAP_PATH
-        if [ ! -d "$SNAP_PATH" ]; then
-            echo -e "\033[1;31mErro: Caminho '$SNAP_PATH' não existe.\033[0m"
-            exit 1
-        fi
+        validate_snap_path "$SNAP_PATH"
 
         echo -e "\n\033[1;31mATENÇÃO: Isso irá restaurar bancos de dados e app-data a partir de $SNAP_PATH.\033[0m"
         read -rp "Tem certeza que deseja continuar? (digite 'sim'): " CONFIRM_RESTORE
@@ -163,6 +175,7 @@ case "$OPTION" in
         list_snapshots
         echo ""
         read -rp "Cole o caminho completo do snapshot que contém o banco: " SNAP_PATH
+        validate_snap_path "$SNAP_PATH"
         if [ ! -d "$SNAP_PATH/databases" ]; then
             echo -e "\033[1;31mErro: Diretório de bancos não encontrado em '$SNAP_PATH'.\033[0m"
             exit 1
@@ -200,7 +213,12 @@ case "$OPTION" in
         echo -e "\n\033[1;33m[!] Restaurar Apenas Configuração (app-data) de um Serviço Oficial\033[0m"
         list_snapshots
         read -rp "Cole o caminho do snapshot desejado: " SNAP_PATH
+        validate_snap_path "$SNAP_PATH"
         read -rp "Nome do app oficial (ex: jellyfin, nextcloud, adguard-home, home-assistant): " APP_NAME
+        if [[ ! "$APP_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            echo -e "\033[1;31m[!] ERRO DE SEGURANÇA: Nome de aplicativo inválido ('$APP_NAME').\033[0m" >&2
+            exit 1
+        fi
         
         if [ -d "$SNAP_PATH/app_data/$APP_NAME" ]; then
             echo "Restaurando /home/umbrel/umbrel/app-data/$APP_NAME..."

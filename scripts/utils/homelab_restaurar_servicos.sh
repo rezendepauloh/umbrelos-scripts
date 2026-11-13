@@ -80,6 +80,16 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Validação estrita de segurança (prevenção contra Command Injection e Path Traversal)
+if [[ ! "$TARGET_MODE" =~ ^(auto|all|service|stack|disks)$ ]]; then
+    echo -e "${RED}[!] ERRO DE SEGURANÇA: Modo de operação inválido ('${TARGET_MODE}').${NC}" >&2
+    exit 1
+fi
+if [[ -n "$TARGET_ARG" ]] && [[ ! "$TARGET_ARG" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo -e "${RED}[!] ERRO DE SEGURANÇA: Argumento contém caracteres proibidos ('${TARGET_ARG}'). Permitido apenas [a-zA-Z0-9_-].${NC}" >&2
+    exit 1
+fi
+
 echo -e "${BLUE}${BOLD}==============================================================================${NC}"
 echo -e "${BLUE}${BOLD}      RESTAURADOR INTELIGENTE DE SERVIÇOS & CONTAINERS (umbrelOS)             ${NC}"
 echo -e "${BLUE}${BOLD}==============================================================================${NC}"
@@ -103,7 +113,7 @@ execute_restore() {
     local mode="$1"
     local arg="$2"
 
-    bash -s << REMOTESCRIPT
+    bash -s -- "$mode" "$arg" << REMOTESCRIPT
 set -u
 
 source /data/config.env 2>/dev/null || true
@@ -116,8 +126,8 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-MODE="${mode}"
-ARG="${arg}"
+MODE="\${1:-auto}"
+ARG="\${2:-}"
 
 UUID_DISK1="${DISK1_UUID:-fc0b5d7b-1706-4461-9e1e-9d3f61e7bab0}"
 UUID_DISK2="${DISK2_UUID:-490440f1-8f2e-41fd-bc27-00632adec790}"

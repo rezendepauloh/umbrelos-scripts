@@ -51,32 +51,23 @@ O umbrelOS possui raiz imutável via Rugix. Por esse motivo, todos os dados de a
 
 ---
 
-## 4. Declaração no Docker Compose e Blindagem Contra Rate Limit (HTTP 429)
+## 4. Declaração no Docker Compose, Blindagem Fail-Closed e Anti Rate Limit (HTTP 429)
 
-Os 6 túneis essenciais estão organizados de forma dedicada na stack `compose/tunnels/docker-compose.yml`, conectando-se diretamente à bridge `homelab_network`.
+Os 5 túneis públicos de aplicações estão organizados na stack `compose/tunnels/docker-compose.yml`, conectando-se diretamente à bridge `homelab_network`.
+
+> [!IMPORTANT]
+> **Blindagem de Segurança:**
+> - **Painel Administrativo umbrelOS Fechado:** O túnel `zrok-umbrel` foi permanentemente desativado para que o painel mestre do sistema operacional jamais fique exposto na internet pública (acesso administrativo externo apenas via VPN Tailscale).
+> - **Autenticação Fail-Closed:** Os túneis com Basic Auth (`zrok-diarios` e `zrok-investimentos`) validam obrigatoriamente a presença de `SYSTEM_PASSWORD` e `KAMILA_PASSWORD` antes de iniciar; caso alguma variável esteja vazia, o container aborta com erro (`exit 1`) em vez de subir um túnel sem senha.
 
 ### Resiliência contra Queda de Luz, Reboots e Rate Limits:
 A API pública do zrok (`api-v2.zrok.io`) aplica um rate limit rígido quando múltiplos túneis do mesmo ambiente tentam se conectar simultaneamente. Para garantir **100% de autonomia e resiliência** em reinicializações do servidor ou atualizações de containers:
-1. **Escalonamento Progressivo (Staggered Startup):** Cada container executa um `sleep` incremental em seu entrypoint antes de invocar o `zrok2 share`.
+1. **Escalonamento Progressivo (Staggered Startup):** Cada container executa um `sleep` incremental (`0s`, `20s`, `40s`, `60s`, `80s`) em seu entrypoint antes de invocar o `zrok2 share`.
 2. **Backoff Controlado (`restart: on-failure:5`):** Substituiu o looping infinito do `restart: unless-stopped`, evitando que falhas temporárias de rede interna congelem o ambiente em listas de bloqueio por HTTP 429.
 
 ```yaml
 services:
-  # 1. Painel Principal umbrelOS (imediato)
-  zrok-umbrel:
-    image: openziti/zrok2:latest
-    container_name: zrok-umbrel
-    restart: on-failure:5
-    user: "1000:1000"
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        echo "zrok-umbrel iniciando...";
-        exec zrok2 share public http://172.18.0.1:80 -n public:umbrel-paulo --headless
-    volumes:
-      - /data/zrok/.zrok2:/home/ziggy/.zrok2
-
-  # 2. Plataforma Clínica Karteman (aguarda 20s)
+  # 1. Plataforma Clínica Karteman (imediato)
   zrok-karteman:
     image: openziti/zrok2:latest
     container_name: zrok-karteman
@@ -85,43 +76,60 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 20;
         echo "zrok-karteman iniciando...";
         exec zrok2 share public http://karteman-app:8081 -n public:karteman-paulo --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 3. Robô Verifica Diários Oficiais (aguarda 40s)
+  # 2. Robô Verifica Diários Oficiais (aguarda 20s)
   zrok-diarios:
     image: openziti/zrok2:latest
     container_name: zrok-diarios
     restart: on-failure:5
     user: "1000:1000"
+    environment:
+      - SAMBA_USER_1=${SAMBA_USER_1:-paulo}
+      - SAMBA_USER_2=${SAMBA_USER_2:-kamila}
+      - SYSTEM_PASSWORD=${SYSTEM_PASSWORD:?ERRO DE SEGURANCA: SYSTEM_PASSWORD obrigatoria}
+      - KAMILA_PASSWORD=${KAMILA_PASSWORD:?ERRO DE SEGURANCA: KAMILA_PASSWORD obrigatoria}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 40;
+        if [ -z "$$SYSTEM_PASSWORD" ] || [ -z "$$KAMILA_PASSWORD" ]; then
+          echo "[ERRO CRÍTICO DE SEGURANÇA] Credenciais Basic Auth vazias. Abortando (Fail-Closed)." >&2
+          exit 1
+        fi
+        sleep 20;
         echo "zrok-diarios iniciando...";
-        exec zrok2 share public http://verifica-diarios-app:8093 -n public:diarios-paulo --basic-auth "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}" --basic-auth "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}" --headless
+        exec zrok2 share public http://verifica-diarios-app:8093 -n public:diarios-paulo --basic-auth "$${SAMBA_USER_1}:$${SYSTEM_PASSWORD}" --basic-auth "$${SAMBA_USER_2}:$${KAMILA_PASSWORD}" --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 4. App Investimentos Pessoais (aguarda 60s)
+  # 3. App Investimentos Pessoais (aguarda 40s)
   zrok-investimentos:
     image: openziti/zrok2:latest
     container_name: zrok-investimentos
     restart: on-failure:5
     user: "1000:1000"
+    environment:
+      - SAMBA_USER_1=${SAMBA_USER_1:-paulo}
+      - SAMBA_USER_2=${SAMBA_USER_2:-kamila}
+      - SYSTEM_PASSWORD=${SYSTEM_PASSWORD:?ERRO DE SEGURANCA: SYSTEM_PASSWORD obrigatoria}
+      - KAMILA_PASSWORD=${KAMILA_PASSWORD:?ERRO DE SEGURANCA: KAMILA_PASSWORD obrigatoria}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 60;
+        if [ -z "$$SYSTEM_PASSWORD" ] || [ -z "$$KAMILA_PASSWORD" ]; then
+          echo "[ERRO CRÍTICO DE SEGURANÇA] Credenciais Basic Auth vazias. Abortando (Fail-Closed)." >&2
+          exit 1
+        fi
+        sleep 40;
         echo "zrok-investimentos iniciando...";
-        exec zrok2 share public http://paulo-investimentos-app:8094 -n public:investimentos-paulo --basic-auth "${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}" --basic-auth "${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}" --headless
+        exec zrok2 share public http://paulo-investimentos-app:8094 -n public:investimentos-paulo --basic-auth "$${SAMBA_USER_1}:$${SYSTEM_PASSWORD}" --basic-auth "$${SAMBA_USER_2}:$${KAMILA_PASSWORD}" --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 5. Nextcloud (aguarda 80s)
+  # 4. Nextcloud (aguarda 60s)
   zrok-cloud:
     image: openziti/zrok2:latest
     container_name: zrok-cloud
@@ -130,13 +138,13 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 80;
+        sleep 60;
         echo "zrok-cloud iniciando...";
         exec zrok2 share public http://172.18.0.1:8081 -n public:cloud-paulo --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
-  # 6. Jellyfin (aguarda 100s)
+  # 5. Jellyfin (aguarda 80s)
   zrok-jellyfin:
     image: openziti/zrok2:latest
     container_name: zrok-jellyfin
@@ -145,7 +153,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        sleep 100;
+        sleep 80;
         echo "zrok-jellyfin iniciando...";
         exec zrok2 share public http://172.18.0.1:8096 -n public:jellyfin-paulo --headless
     volumes:
@@ -160,12 +168,12 @@ O script `homelab-daemon.sh` garante que a stack `compose/tunnels` inicie automa
 
 | Serviço | URL Pública Externa (zrok) | Apontamento Interno | Autenticação / Proteção |
 | :--- | :--- | :--- | :--- |
-| 🖥️ **Painel umbrelOS** | [https://umbrel-paulo.shares.zrok.io](https://umbrel-paulo.shares.zrok.io) | `http://172.18.0.1:80` | Senha Mestre do Umbrel |
 | 🩺 **Clínica Karteman** | [https://karteman-paulo.shares.zrok.io](https://karteman-paulo.shares.zrok.io) | `http://karteman-app:8081` | Login da Aplicação Karteman |
 | 🍿 **Jellyfin (Streaming/TV)** | [https://jellyfin-paulo.shares.zrok.io](https://jellyfin-paulo.shares.zrok.io) | `http://172.18.0.1:8096` | Login Oficial do Jellyfin |
-| 📰 **Verifica Diários** | [https://diarios-paulo.shares.zrok.io](https://diarios-paulo.shares.zrok.io) | `http://verifica-diarios-app:8093` | 🔒 Usuário/Senha (`paulo` / `kamila`) |
-| 💰 **Investimentos** | [https://investimentos-paulo.shares.zrok.io](https://investimentos-paulo.shares.zrok.io) | `http://paulo-investimentos-app:8094` | 🔒 Usuário/Senha (`paulo` / `kamila`) |
+| 📰 **Verifica Diários** | [https://diarios-paulo.shares.zrok.io](https://diarios-paulo.shares.zrok.io) | `http://verifica-diarios-app:8093` | 🔒 Basic Auth Fail-Closed (`paulo` / `kamila`) |
+| 💰 **Investimentos** | [https://investimentos-paulo.shares.zrok.io](https://investimentos-paulo.shares.zrok.io) | `http://paulo-investimentos-app:8094` | 🔒 Basic Auth Fail-Closed (`paulo` / `kamila`) |
 | ☁️ **Nextcloud** | [https://cloud-paulo.shares.zrok.io](https://cloud-paulo.shares.zrok.io) | `http://172.18.0.1:8081` | Login Nextcloud |
+| 🛡️ **Painel umbrelOS** | *Desativado por Segurança (`404`)* | `192.168.0.8:80` | Acesso externo restrito à VPN Tailscale |
 
 
 

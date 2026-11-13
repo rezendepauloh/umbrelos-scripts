@@ -48,15 +48,28 @@ with open(M3U_FILE, "r", encoding="utf-8", errors="ignore") as f:
 
 print(f"[+] Total de canais na M3U: {len(m3u_channels)}")
 
-# 2. Baixar e agregar EPGs
+# 2. Baixar e agregar EPGs (com proteção contra Zip/Gzip Bomb e XXE / XML Entity Expansion)
+MAX_COMPRESSED_BYTES = 25 * 1024 * 1024   # 25 MB comprimido
+MAX_DECOMPRESSED_BYTES = 120 * 1024 * 1024 # 120 MB descomprimido
 epg_trees = []
 headers = {"User-Agent": "Mozilla/5.0"}
 for sname, url in SOURCES:
     try:
+        if not url.startswith("https://"):
+            raise ValueError(f"URL insegura bloqueada (exigido HTTPS): {url}")
         print(f"[+] Baixando fonte {sname}...")
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=30) as resp:
-            data = gzip.decompress(resp.read())
+            compressed = resp.read(MAX_COMPRESSED_BYTES + 1)
+            if len(compressed) > MAX_COMPRESSED_BYTES:
+                raise ValueError(f"Payload comprimido excede o limite de segurança ({MAX_COMPRESSED_BYTES} bytes)")
+            import io
+            with gzip.GzipFile(fileobj=io.BytesIO(compressed)) as gz:
+                data = gz.read(MAX_DECOMPRESSED_BYTES + 1)
+            if len(data) > MAX_DECOMPRESSED_BYTES:
+                raise ValueError(f"Payload XML descomprimido excede o limite contra Zip Bomb ({MAX_DECOMPRESSED_BYTES} bytes)")
+            if b"<!ENTITY" in data.upper():
+                raise ValueError("Declaração XML <!ENTITY detectada (proteção anti-XXE / Billion Laughs)")
             root = ET.fromstring(data)
             epg_trees.append((sname, root))
             print(f"    -> {sname}: {len(root.findall('channel'))} canais e {len(root.findall('programme'))} programas.")

@@ -22,10 +22,16 @@
 # Carregar configurações do Homelab e unificar variáveis de ambiente
 ENV_FILE="/data/config.env"
 if [ -f "/data/config.env" ]; then
+    chown root:umbrel "/data/config.env" 2>/dev/null || true
+    chmod 640 "/data/config.env" 2>/dev/null || true
     source "/data/config.env"
 elif [ -f "/home/umbrel/umbrelos-scripts/config.env" ]; then
     ENV_FILE="/home/umbrel/umbrelos-scripts/config.env"
+    chmod 600 "/home/umbrel/umbrelos-scripts/config.env" 2>/dev/null || true
     source "/home/umbrel/umbrelos-scripts/config.env"
+fi
+if [ -f "/home/umbrel/umbrelos-scripts/config.env" ]; then
+    chmod 600 "/home/umbrel/umbrelos-scripts/config.env" 2>/dev/null || true
 fi
 
 # Garantir symlinks unificados de .env apontando para o config.env canônico
@@ -41,6 +47,8 @@ if [ -d "/home/umbrel/umbrelos-scripts" ] && [ -f "$ENV_FILE" ]; then
 fi
 
 LOG="/data/homelab-daemon.log"
+touch "$LOG" 2>/dev/null || true
+chmod 640 "$LOG" 2>/dev/null || true
 exec >> "$LOG" 2>&1
 echo "=== HOMELAB DAEMON INICIADO: $(date) ==="
 
@@ -49,10 +57,17 @@ if [ -n "${TIMEZONE:-}" ]; then
     timedatectl set-timezone "${TIMEZONE}" 2>/dev/null || true
 fi
 
-# 0.2 Restaurar regras de sudoers persistentes (rsync sem senha)
+# 0.2 Restaurar regras de sudoers persistentes (rsync sem senha) com validação visudo
 if [ -f "/data/etc/sudoers.d/umbrel-rsync" ]; then
-    cp "/data/etc/sudoers.d/umbrel-rsync" "/etc/sudoers.d/umbrel-rsync" 2>/dev/null || true
-    chmod 0440 "/etc/sudoers.d/umbrel-rsync" 2>/dev/null || true
+    chown root:root "/data/etc/sudoers.d/umbrel-rsync" 2>/dev/null || true
+    chmod 0440 "/data/etc/sudoers.d/umbrel-rsync" 2>/dev/null || true
+    if visudo -cf "/data/etc/sudoers.d/umbrel-rsync" >/dev/null 2>&1; then
+        cp "/data/etc/sudoers.d/umbrel-rsync" "/etc/sudoers.d/umbrel-rsync" 2>/dev/null || true
+        chown root:root "/etc/sudoers.d/umbrel-rsync" 2>/dev/null || true
+        chmod 0440 "/etc/sudoers.d/umbrel-rsync" 2>/dev/null || true
+    else
+        echo "[ALERTA DE SEGURANÇA] /data/etc/sudoers.d/umbrel-rsync reprovado pelo visudo! Ignorando cópia."
+    fi
 fi
 
 # 0. Garantir IP Estático na placa de rede física
@@ -192,17 +207,20 @@ for j in {1..60}; do
                 fi
                 if docker ps -q -f name=nextcloud_web_1 | grep -q .; then
                     echo "Recriando containers do Nextcloud com os novos volumes..."
-                    SCRIPT_UMBREL_ROOT="/home/umbrel/umbrel" \
-                    SCRIPT_DOCKER_FRAGMENTS="/opt/umbreld/source/modules/apps/legacy-compat" \
-                    SCRIPT_APP_REPO_DIR="/home/umbrel/umbrel/app-stores/getumbrel-umbrel-apps-github-53f74447/nextcloud" \
-                    SCRIPT_APP_DATA_ROOTS='{"nextcloud":"/home/umbrel/umbrel/app-data/nextcloud/data"}' \
-                    BITCOIN_NETWORK="mainnet" \
-                    TOR_PROXY_IP="10.21.21.11" \
-                    TOR_PROXY_PORT="9050" \
-                    TOR_PASSWORD="mLcLDdt5qqMxlq3wv8Din3UD44bTZHzRFhIktw38kWg=" \
-                    TOR_HASHED_PASSWORD="16:158FBE422B1A9D996073BE2B9EC38852C70CE12362CA016F8F6859C426" \
-                    REMOTE_TOR_ACCESS="false" \
-                    bash /opt/umbreld/source/modules/apps/legacy-compat/app-script restart nextcloud || true
+                    (
+                        [ -f "/home/umbrel/umbrel/.env" ] && source "/home/umbrel/umbrel/.env" 2>/dev/null || true
+                        SCRIPT_UMBREL_ROOT="/home/umbrel/umbrel" \
+                        SCRIPT_DOCKER_FRAGMENTS="/opt/umbreld/source/modules/apps/legacy-compat" \
+                        SCRIPT_APP_REPO_DIR="/home/umbrel/umbrel/app-stores/getumbrel-umbrel-apps-github-53f74447/nextcloud" \
+                        SCRIPT_APP_DATA_ROOTS='{"nextcloud":"/home/umbrel/umbrel/app-data/nextcloud/data"}' \
+                        BITCOIN_NETWORK="${BITCOIN_NETWORK:-mainnet}" \
+                        TOR_PROXY_IP="${TOR_PROXY_IP:-10.21.21.11}" \
+                        TOR_PROXY_PORT="${TOR_PROXY_PORT:-9050}" \
+                        TOR_PASSWORD="${TOR_PASSWORD:-}" \
+                        TOR_HASHED_PASSWORD="${TOR_HASHED_PASSWORD:-}" \
+                        REMOTE_TOR_ACCESS="${REMOTE_TOR_ACCESS:-false}" \
+                        bash /opt/umbreld/source/modules/apps/legacy-compat/app-script restart nextcloud || true
+                    )
                 fi
             fi
         fi
@@ -259,8 +277,10 @@ for j in {1..60}; do
 
         if [ -f "/data/samba/smb.conf" ]; then
             echo "Aplicando blindagem definitiva do Samba..."
+            [ -f "/data/samba/passdb.tdb" ] && chmod 600 /data/samba/passdb.tdb 2>/dev/null || true
             chattr -i /etc/samba/smb.conf 2>/dev/null || true
             cp /data/samba/smb.conf /etc/samba/smb.conf
+            chmod 644 /etc/samba/smb.conf 2>/dev/null || true
             chattr +i /etc/samba/smb.conf 2>/dev/null || true
             systemctl enable smbd nmbd wsdd2 2>/dev/null || true
             systemctl restart smbd nmbd wsdd2 || true

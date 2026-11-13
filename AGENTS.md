@@ -90,8 +90,11 @@ Gerenciadas no diretório `/home/umbrel/umbrelos-scripts/compose/`:
    - **Antes de qualquer upgrade de versão maior do umbrelOS (ex: 1.x para 2.0):**
      - O atributo imutável de `/etc/samba/smb.conf` DEVE ser temporariamente removido (`chattr -i`).
      - Backups completos de bancos (Immich, Nextcloud) e pastas críticas de apps (Jellyfin data) DEVEM ser efetuados e enviados para o Pop!_OS (`/mnt/storage_930/Backups_Homelab`).
-5. **Segurança e .gitignore:**
-   - NUNCA versione arquivos contendo senhas reais ou chaves privadas (`config.env`, `.env`, `smb.conf` com dados sensíveis). Use sempre os templates `.example`.
+5. **Segurança, Hardening e .gitignore:**
+   - NUNCA versione arquivos contendo senhas reais ou chaves privadas (`config.env`, `.env`, `smb.conf` com dados sensíveis, ou credenciais hardcoded em scripts/testes). Use sempre os templates `.example` e variáveis de ambiente.
+   - Arquivos de segredos (`config.env` local e `/data/config.env` no servidor) devem manter permissões restritas (`600` ou `640` `root:umbrel`), nunca world-readable (`644`).
+   - Serviços com acesso privilegiado ou túneis públicos (`ttyd`, `zrok-diarios`, `zrok-investimentos`) devem operar em modo **Fail-Closed** (abortar inicialização caso `SYSTEM_PASSWORD` ou `KAMILA_PASSWORD` estejam vazias) e o painel administrativo do umbrelOS jamais deve ser exposto via túnel público `zrok`.
+   - Serviços auxiliares de uso estritamente interno entre containers (`flaresolverr`, `betor-api`) devem fazer bind apenas em `127.0.0.1` no host.
 6. **Variáveis de Ambiente e Stacks Docker (Unificação de `.env`):**
    - Nunca gere arquivos `.env` paralelos com subconjuntos hardcoded de variáveis. A fonte canônica da verdade é exclusivamente `/data/config.env` (servidor) e `config.env` (local).
    - No servidor, `/home/umbrel/umbrelos-scripts/.env` e as stacks centrais de infraestrutura (`management`, `arr-stack`, `betor`, `tunnels`) utilizam symlinks apontando diretamente para `/data/config.env`.

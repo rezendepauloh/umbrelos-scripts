@@ -45,14 +45,21 @@ test_url() {
     fi
 }
 
-echo -e "${CYAN}${BOLD}[1/2] Testando Conectividade dos 6 Túneis Públicos zrok v2:${NC}"
+echo -e "${CYAN}${BOLD}[1/2] Testando Conectividade dos 5 Túneis Públicos zrok v2 e Blindagem do Painel:${NC}"
 AUTH_PAULO=""
 [ -n "${SYSTEM_PASSWORD:-}" ] && AUTH_PAULO="${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}"
 
 AUTH_KAMILA=""
 [ -n "${KAMILA_PASSWORD:-}" ] && AUTH_KAMILA="${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}"
 
-test_url "Umbrel OS Dashboard" "https://umbrel-paulo.shares.zrok.io" ""
+# Verificar se o túnel do painel administrativo UmbrelOS permanece FECHADO por segurança (deve retornar 404 ou ERR)
+UMBREL_TUNNEL_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "https://umbrel-paulo.shares.zrok.io" || echo "ERR")
+if [[ "$UMBREL_TUNNEL_CODE" =~ ^(404|000|ERR)$ ]]; then
+    printf "  %-32s [ \033[1;32mBLINDADO / FECHADO (HTTP %s)\033[0m ] -> https://umbrel-paulo.shares.zrok.io\n" "Umbrel OS Dashboard (Bloqueado)" "$UMBREL_TUNNEL_CODE"
+else
+    printf "  %-32s [ \033[1;31mRISCO: EXPOSTO (HTTP %s)\033[0m ] -> https://umbrel-paulo.shares.zrok.io\n" "Umbrel OS Dashboard" "$UMBREL_TUNNEL_CODE"
+fi
+
 test_url "Nextcloud Nuvem" "https://cloud-paulo.shares.zrok.io" ""
 test_url "Jellyfin Streaming" "https://jellyfin-paulo.shares.zrok.io" ""
 test_url "Sistema Karteman" "https://karteman-paulo.shares.zrok.io" ""

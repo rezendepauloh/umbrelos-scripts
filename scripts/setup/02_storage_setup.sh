@@ -59,8 +59,10 @@ ensure_dir "${LOCAL_BACKUP_DIR}" "${SYSTEM_USER}" "${SYSTEM_GROUP}" "775"
 log_info "Instalando /data/bin/homelab-daemon.sh e persistindo /data/config.env..."
 mkdir -p /data/bin
 if [[ -f "${SCRIPT_DIR}/config.env" ]]; then
+    chmod 600 "${SCRIPT_DIR}/config.env" 2>/dev/null || true
     cp -f "${SCRIPT_DIR}/config.env" /data/config.env
-    chmod 644 /data/config.env
+    chown root:"${SYSTEM_GROUP:-umbrel}" /data/config.env 2>/dev/null || true
+    chmod 640 /data/config.env
     ln -sfn /data/config.env "${SCRIPT_DIR}/.env"
 fi
 cp -f "${SCRIPT_DIR}/scripts/daemons/homelab-daemon.sh" /data/bin/homelab-daemon.sh

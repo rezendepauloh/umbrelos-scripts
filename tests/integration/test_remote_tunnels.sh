@@ -6,12 +6,13 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../test_framework.sh"
 
-start_suite "Acesso Remoto Seguro" "Auditoria dos 6 túneis zrok v2 e VPN Tailscale"
+start_suite "Acesso Remoto Seguro" "Auditoria dos 5 túneis zrok v2, blindagem Basic Auth e VPN Tailscale"
 
 test_tunnel() {
     local name="$1"
     local url="$2"
     local auth="${3:-}"
+    local expected="${4:-200|301|302|307|308}"
     
     local auth_opt=""
     [ -n "$auth" ] && auth_opt="-u $auth"
@@ -19,28 +20,34 @@ test_tunnel() {
     local code
     code=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 4 $auth_opt "$url" || echo "000")
     
-    if [[ "$code" =~ ^(200|301|302|307|308|401)$ ]]; then
-        assert_pass "Túnel ${name} online" "${url} (HTTP ${code})"
+    if [[ "$code" =~ ^(${expected})$ ]]; then
+        assert_pass "Túnel ${name}" "${url} (HTTP ${code})"
     else
-        assert_fail "Túnel ${name} inacessível" "${url} (HTTP ${code})"
+        assert_fail "Túnel ${name} fora do padrão esperado (${expected})" "${url} (HTTP ${code})"
     fi
 }
 
-# 1. Túneis Públicos zrok v2
+# 1. Túneis Públicos zrok v2 e Blindagem de Segurança
 AUTH_PAULO=""
 [ -n "${SYSTEM_PASSWORD:-}" ] && AUTH_PAULO="${SAMBA_USER_1:-paulo}:${SYSTEM_PASSWORD}"
 
 AUTH_KAMILA=""
 [ -n "${KAMILA_PASSWORD:-}" ] && AUTH_KAMILA="${SAMBA_USER_2:-kamila}:${KAMILA_PASSWORD}"
 
-test_tunnel "Umbrel Dashboard" "https://umbrel-paulo.shares.zrok.io" ""
-test_tunnel "Nextcloud Nuvem" "https://cloud-paulo.shares.zrok.io" ""
-test_tunnel "Jellyfin Streaming" "https://jellyfin-paulo.shares.zrok.io" ""
-test_tunnel "Sistema Karteman" "https://karteman-paulo.shares.zrok.io" ""
-test_tunnel "Verifica Diários (Paulo)" "https://diarios-paulo.shares.zrok.io" "$AUTH_PAULO"
-test_tunnel "Verifica Diários (Kamila)" "https://diarios-paulo.shares.zrok.io" "$AUTH_KAMILA"
-test_tunnel "Investimentos Pessoais (Paulo)" "https://investimentos-paulo.shares.zrok.io" "$AUTH_PAULO"
-test_tunnel "Investimentos Pessoais (Kamila)" "https://investimentos-paulo.shares.zrok.io" "$AUTH_KAMILA"
+# Garantir que o painel administrativo umbrelOS NÃO está exposto publicamente no zrok
+test_tunnel "Umbrel Dashboard Bloqueado na Internet (Segurança)" "https://umbrel-paulo.shares.zrok.io" "" "404|000"
+
+# Garantir que os túneis protegidos exigem Basic Auth (retornam 401 sem credenciais)
+test_tunnel "Verifica Diários (Bloqueio Anônimo 401)" "https://diarios-paulo.shares.zrok.io" "" "401"
+test_tunnel "Investimentos Pessoais (Bloqueio Anônimo 401)" "https://investimentos-paulo.shares.zrok.io" "" "401"
+
+test_tunnel "Nextcloud Nuvem online" "https://cloud-paulo.shares.zrok.io" ""
+test_tunnel "Jellyfin Streaming online" "https://jellyfin-paulo.shares.zrok.io" ""
+test_tunnel "Sistema Karteman online" "https://karteman-paulo.shares.zrok.io" ""
+test_tunnel "Verifica Diários (Paulo) autenticado" "https://diarios-paulo.shares.zrok.io" "$AUTH_PAULO" "200|301|302|307|308"
+test_tunnel "Verifica Diários (Kamila) autenticado" "https://diarios-paulo.shares.zrok.io" "$AUTH_KAMILA" "200|301|302|308"
+test_tunnel "Investimentos Pessoais (Paulo) autenticado" "https://investimentos-paulo.shares.zrok.io" "$AUTH_PAULO" "200|301|302|307|308"
+test_tunnel "Investimentos Pessoais (Kamila) autenticado" "https://investimentos-paulo.shares.zrok.io" "$AUTH_KAMILA" "200|301|302|307|308"
 
 # 2. Conectividade Tailscale
 if [ "$IS_LOCAL_HOST" = true ]; then

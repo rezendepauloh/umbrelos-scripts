@@ -15,15 +15,24 @@ log_step "Módulo 5: Configuração de Segurança, Firewall e Tailscale"
 log_info "Verificando serviço SSH..."
 systemctl enable ssh >/dev/null 2>&1 || systemctl enable sshd >/dev/null 2>&1 || true
 
-# Configurações recomendadas de SSH KeepAlive (evita desconexões em sessões remotas)
+# Configurações recomendadas de SSH KeepAlive e Hardening (evita desconexões e bloqueia senhas vazias)
 SSHD_CONFIG="/etc/ssh/sshd_config.d/99-umbrel-homelab.conf"
 SSHD_BLOCK="
 ClientAliveInterval 60
 ClientAliveCountMax 3
 TCPKeepAlive yes
+PermitEmptyPasswords no
+MaxAuthTries 4
+X11Forwarding no
 "
 ensure_config_block "SSH_KEEPALIVE" "$SSHD_CONFIG" "$SSHD_BLOCK"
 systemctl reload ssh >/dev/null 2>&1 || systemctl reload sshd >/dev/null 2>&1 || true
+
+# Garantir Fail2ban ativo contra ataques de força bruta no SSH
+if command_exists fail2ban-client; then
+    log_info "Ativando serviço Fail2ban contra força bruta..."
+    systemctl enable --now fail2ban >/dev/null 2>&1 || true
+fi
 
 # 2. Configuração do Firewall (UFW)
 log_info "Configurando regras padrão de firewall (UFW)..."

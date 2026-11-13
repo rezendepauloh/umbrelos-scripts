@@ -82,8 +82,10 @@ fi
 
 # 3. Dumps dos bancos de dados locais
 echo "Gerando dumps dos bancos de dados..."
-TMP_DUMP="/tmp/dumps_\$(date +%s)"
-mkdir -p "\$TMP_DUMP"
+umask 077
+TMP_DUMP=\$(mktemp -d -p /tmp dumps_XXXXXXXXXX)
+chmod 700 "\$TMP_DUMP"
+trap 'rm -rf "\$TMP_DUMP"' EXIT
 
 # Immich Postgres
 IMMICH_CONTAINER=\$(docker ps --format '{{.Names}}' | grep -E 'immich.*(postgres|database)' | head -n 1 || true)
@@ -94,7 +96,7 @@ fi
 # Nextcloud DB
 NC_DB_CONTAINER=\$(docker ps --format '{{.Names}}' | grep -E 'nextcloud.*(db|mariadb|postgres|mysql)' | head -n 1 || true)
 if [ -n "\$NC_DB_CONTAINER" ]; then
-    docker exec "\$NC_DB_CONTAINER" mariadb-dump -u root -pmoneyprintergobrrr --all-databases 2>/dev/null | gzip > "\${TMP_DUMP}/nextcloud_db.sql.gz" || true
+    docker exec "\$NC_DB_CONTAINER" sh -c 'mariadb-dump -u root -p"\${MYSQL_ROOT_PASSWORD:-}" --all-databases 2>/dev/null || mariadb-dump -u root --all-databases 2>/dev/null' | gzip > "\${TMP_DUMP}/nextcloud_db.sql.gz" || true
 fi
 
 # Envia os dumps compactados

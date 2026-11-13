@@ -71,6 +71,7 @@ echo "$SYSTEM_PASSWORD" | sudo -S mkdir -p "${LOCAL_DEST}/databases" \
                                           "${LOCAL_DEST}/app_data" \
                                           "${LOCAL_DEST}/system_data" \
                                           "${LOCAL_DEST}/custom_stacks" 2>&1 | grep -v 'password for umbrel' || true
+echo "$SYSTEM_PASSWORD" | sudo -S chmod 750 "${LOCAL_DEST}" "${LOCAL_DEST}/databases" "${LOCAL_DEST}/system_data" 2>/dev/null || true
 
 # 1. DUMPS DOS BANCOS DE DADOS
 echo -e "\n\033[1;33m[2/6] Gerando dumps consistentes dos bancos de dados...\033[0m"

@@ -84,14 +84,14 @@ Remove resíduos de atualizações antigas do Docker e trunca logs que excedam 3
 ./scripts/utils/homelab_auditar_zrok.sh
 ```
 Faz o disparo instantâneo para:
-- Dashboard Umbrel (`umbrel-paulo.shares.zrok.io`)
+- Blindagem do Painel Umbrel (`umbrel-paulo.shares.zrok.io` -> valida que permanece `BLINDADO / FECHADO`)
 - Nextcloud (`cloud-paulo.shares.zrok.io`)
 - Jellyfin (`jellyfin-paulo.shares.zrok.io`)
 - Karteman (`karteman-paulo.shares.zrok.io`)
 - Verifica Diários (`diarios-paulo.shares.zrok.io`)
 - Investimentos (`investimentos-paulo.shares.zrok.io`)
 - Ping no IP Tailscale (`100.88.159.41`)
-Retornando em segundos se todas as portas e túneis estão verdes `[ONLINE]`.
+Retornando em segundos se os 5 túneis públicos estão verdes `[ONLINE]` e se o painel administrativo segue protegido.
 
 ---
 

@@ -82,9 +82,11 @@ if [[ -f "$QBIT_CONF" ]] || [[ -d "${SCRIPT_DIR}/compose/arr-stack/data/qbittorr
     mkdir -p "$(dirname "$QBIT_CONF")"
     sed -i '/WebUI\\CSRFProtection/d' "$QBIT_CONF" 2>/dev/null || true
     sed -i '/WebUI\\HostHeaderValidation/d' "$QBIT_CONF" 2>/dev/null || true
+    sed -i '/WebUI\\ServerDomains/d' "$QBIT_CONF" 2>/dev/null || true
     cat << 'EOF' >> "$QBIT_CONF"
-WebUI\CSRFProtection=false
-WebUI\HostHeaderValidation=false
+WebUI\CSRFProtection=true
+WebUI\HostHeaderValidation=true
+WebUI\ServerDomains=umbrel.local,*.pk.local,192.168.0.8,localhost,127.0.0.1
 EOF
     docker restart qbittorrent >/dev/null 2>&1 || true
 fi

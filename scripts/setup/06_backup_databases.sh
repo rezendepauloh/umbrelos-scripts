@@ -23,10 +23,12 @@ cat << 'EOF' > "${BACKUP_SCRIPT_DIR}/dump_databases.sh"
 #!/usr/bin/env bash
 # Script de dump seguro executado diariamente pelo cron
 set -euo pipefail
+umask 077
 
 DEST_DIR="/mnt/storage/backups/databases"
 DATE=$(date +'%Y-%m-%d_%H%M%S')
 mkdir -p "$DEST_DIR"
+chmod 750 "$DEST_DIR" 2>/dev/null || true
 
 log() { echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"; }
 

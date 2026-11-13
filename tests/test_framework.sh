@@ -45,7 +45,7 @@ run_target_cmd() {
         eval "$cmd"
     else
         # Se for um comando que usa sudo, garantimos que execute com a SYSTEM_PASSWORD remotamente via sudo -S
-        ssh -i "$SSH_KEY" -o ConnectTimeout=5 -o StrictHostKeyChecking=no "${SSH_USER}@${TARGET_HOST}" "
+        ssh -i "$SSH_KEY" -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "${SSH_USER}@${TARGET_HOST}" "
             if [ -f /data/config.env ]; then
                 set -a; source /data/config.env; set +a
             fi

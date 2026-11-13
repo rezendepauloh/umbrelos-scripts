@@ -29,5 +29,10 @@ assert_http_status "Nextcloud Hub (:8081)" "http://${HOST_IP}:8081" "200|302"
 assert_http_status "Nginx Proxy Manager (:81)" "http://${HOST_IP}:81" "200"
 assert_http_status "IT-Tools (:8080)" "http://${HOST_IP}:8080" "200"
 assert_http_status "Syncthing (:8384)" "http://${HOST_IP}:8384" "200"
-assert_http_status "Web Terminal ttyd (:7681 - Auth Requerida)" "http://${HOST_IP}:7681" "401"
-assert_http_status "Web Terminal ttyd (:7681 - Autenticado)" "http://${HOST_IP}:7681" "200" "-u umbrel:M!n0t@ur0"
+assert_http_status "Web Terminal ttyd (:7681 - Sem Credenciais -> 401)" "http://${HOST_IP}:7681" "401"
+assert_http_status "Web Terminal ttyd (:7681 - Senha Incorreta -> 401)" "http://${HOST_IP}:7681" "401" "-u ${SYSTEM_USER:-umbrel}:senha_invalida_auditoria"
+if [ -n "${SYSTEM_PASSWORD:-}" ]; then
+    assert_http_status "Web Terminal ttyd (:7681 - Autenticado)" "http://${HOST_IP}:7681" "200" "-u ${SYSTEM_USER:-umbrel}:${SYSTEM_PASSWORD}"
+else
+    assert_skip "Web Terminal ttyd (:7681 - Autenticado)" "SYSTEM_PASSWORD não definida no ambiente"
+fi

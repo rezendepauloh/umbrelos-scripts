@@ -3,8 +3,8 @@ services:
     image: mongo:8
     container_name: betor-mongodb
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${BETOR_MONGO_USER:-betor}
-      MONGO_INITDB_ROOT_PASSWORD: ${BETOR_MONGO_PASSWORD:-betor}
+      MONGO_INITDB_ROOT_USERNAME: "${BETOR_MONGO_USER:-betor}"
+      MONGO_INITDB_ROOT_PASSWORD: "${BETOR_MONGO_PASSWORD:?BETOR_MONGO_PASSWORD obrigatoria em config.env}"
     volumes:
       - ./data/mongodb:/data/db
     restart: unless-stopped
@@ -23,7 +23,7 @@ services:
     depends_on:
       - redis
     environment:
-      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:-betor}@mongodb:27017
+      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:?BETOR_MONGO_PASSWORD obrigatoria}@mongodb:27017
       - DATABASE_REDIS_URL=redis://redis:6379/0
       - BETOR_CELERY_BACKEND_URL=redis://redis:6379/1
       - BETOR_CELERY_BROKER_URL=redis://redis:6379/1
@@ -38,7 +38,7 @@ services:
     depends_on:
       - redis
     environment:
-      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:-betor}@mongodb:27017
+      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:?BETOR_MONGO_PASSWORD obrigatoria}@mongodb:27017
       - DATABASE_REDIS_URL=redis://redis:6379/0
       - BETOR_CELERY_BACKEND_URL=redis://redis:6379/1
       - BETOR_CELERY_BROKER_URL=redis://redis:6379/1
@@ -54,7 +54,7 @@ services:
       - mongodb
       - redis
     environment:
-      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:-betor}@mongodb:27017
+      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:?BETOR_MONGO_PASSWORD obrigatoria}@mongodb:27017
       - DATABASE_REDIS_URL=redis://redis:6379/0
       - BETOR_CELERY_BACKEND_URL=redis://redis:6379/1
       - BETOR_CELERY_BROKER_URL=redis://redis:6379/1
@@ -71,7 +71,7 @@ services:
       - redis
       - scrapyd
     environment:
-      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:-betor}@mongodb:27017
+      - DATABASE_MONGO_DB_CONNECTION_URI=mongodb://${BETOR_MONGO_USER:-betor}:${BETOR_MONGO_PASSWORD:?BETOR_MONGO_PASSWORD obrigatoria}@mongodb:27017
       - DATABASE_REDIS_URL=redis://redis:6379/0
       - BETOR_CELERY_BACKEND_URL=redis://redis:6379/1
       - BETOR_CELERY_BROKER_URL=redis://redis:6379/1
@@ -80,7 +80,7 @@ services:
       - STORE_TORRENT_FILE_SAVE_URL=local:///torrents
       - DOWNLOAD_ITEMS_STORE_SAVE_URL=local:///items-data
     ports:
-      - "8005:8000"
+      - "127.0.0.1:8005:8000"
     volumes:
       - ./data/items-data:/items-data
       - ./data/torrents:/torrents

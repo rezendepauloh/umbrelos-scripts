@@ -75,9 +75,9 @@ O Nextcloud oficial do Umbrel foi totalmente homologado e integrado aos **HDs ex
 
 1. **Acesso Web e Credenciais:**
    - URL Local: `http://umbrel.local:8081` (ou `http://192.168.0.8:8081` / `http://nuvem.pk.local`).
-   - Usuário Administrador Geral: `umbrel` (senha no painel inicial do Umbrel).
-   - Usuário Pessoal Paulo: `paulo` | Senha: `Paulo#Homelab2026` *(trocável no perfil)*.
-   - Usuário Pessoal Kamila: `kamila` | Senha: `Kamila#Homelab2026` *(trocável no perfil)*.
+   - Usuário Administrador Geral: `umbrel` (senha no painel inicial do Umbrel / `SYSTEM_PASSWORD`).
+   - Usuário Pessoal Paulo: `paulo` | Senha: `<definida em config.env / perfil>`.
+   - Usuário Pessoal Kamila: `kamila` | Senha: `<definida em config.env / perfil>`.
 
    > 💡 **Como Recuperar ou Redefinir Senhas de Usuários via Linha de Comando (`occ`):**
    > Se esquecer a senha ou tiver problemas de autenticação, você pode redefini-la diretamente no SSH (`umbrel@192.168.0.8`):

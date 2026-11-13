@@ -121,7 +121,7 @@ services:
       - CAPTCHA_SOLVER=none
       - TZ=America/Campo_Grande
     ports:
-      - "8191:8191"
+      - "127.0.0.1:8191:8191"
     restart: unless-stopped
 
 networks:

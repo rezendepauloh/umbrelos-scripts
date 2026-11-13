@@ -72,7 +72,8 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
                 self.assertIn(uuid, content, f"UUID {uuid} deve estar documentado na tabela de armazenamento do AGENTS.md")
 
     def test_03_no_exposed_passwords_in_tracked_examples(self):
-        """Impede que senhas em texto claro sejam commitadas em arquivos versionados."""
+        """Impede que senhas em texto claro ou segredos reais sejam commitados em QUALQUER arquivo rastreado pelo Git."""
+        import subprocess
         with open(CONFIG_EXAMPLE, 'r', encoding='utf-8') as f:
             example_content = f.read()
 
@@ -80,17 +81,53 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
         self.assertNotIn("senha_root", example_content.replace('SYSTEM_PASSWORD="senha_root"', ""))
         self.assertNotIn("senha_kamila", example_content.replace('KAMILA_PASSWORD="senha_kamila"', ""))
 
-        # Verifica se config.env existe e garante que nenhuma senha contida nele vaze em arquivos rastreados pelo git
+        # Padrões proibidos de credenciais hardcoded que nunca devem existir no código
+        forbidden_literals = [
+            "M!n0t@ur0",
+            "moneyprintergobrrr",
+            "Paulo#Homelab2026",
+            "Kamila#Homelab2026",
+            "mLcLDdt5qqMxlq3wv8Din3UD44bTZHzRFhIktw38kWg=",
+            "16:158FBE422B1A9D996073BE2B9EC38852C70CE12362CA016F8F6859C426",
+        ]
+
+        # Extrair segredos reais de config.env (se existir localmente)
         config_env_path = os.path.join(ROOT_DIR, 'config.env')
+        real_secrets = {}
         if os.path.exists(config_env_path):
             with open(config_env_path, 'r', encoding='utf-8') as f:
                 env_content = f.read()
-            passwords = []
-            for match in re.finditer(r'(?:SYSTEM_PASSWORD|KAMILA_PASSWORD)=["\']([^"\']+)["\']', env_content):
-                passwords.append(match.group(1))
+            for match in re.finditer(r'^(SYSTEM_PASSWORD|KAMILA_PASSWORD|ZROK_ENABLE_TOKEN|BETOR_MONGO_PASSWORD)=["\']?([^"\'\n]+)["\']?', env_content, re.M):
+                var_name, val = match.group(1), match.group(2).strip()
+                # Ignora placeholders genéricos ou nome curto de serviço
+                if val and val not in ("senha_root", "senha_kamila", "seu_token_aqui", "senha_segura_betor", "betor"):
+                    real_secrets[var_name] = val
 
-            for pwd in passwords:
-                self.assertNotIn(pwd, example_content, "Nenhuma senha de config.env deve estar no config.env.example!")
+        # Listar todos os arquivos rastreados pelo Git
+        res = subprocess.run(['git', 'ls-files'], cwd=ROOT_DIR, capture_output=True, text=True)
+        tracked_files = [line.strip() for line in res.stdout.splitlines() if line.strip()]
+
+        for rel_path in tracked_files:
+            # Ignorar este próprio arquivo de teste ao checar a lista de strings proibidas
+            if rel_path == "tests/unit/test_config_consistency.py":
+                continue
+            abs_path = os.path.join(ROOT_DIR, rel_path)
+            if not os.path.isfile(abs_path):
+                continue
+            try:
+                with open(abs_path, 'r', encoding='utf-8') as f:
+                    file_text = f.read()
+            except Exception:
+                continue
+
+            for lit in forbidden_literals:
+                self.assertNotIn(lit, file_text, f"Credencial hardcoded proibida ('{lit[:6]}...') detectada em {rel_path}!")
+
+            for secret_name, secret_val in real_secrets.items():
+                self.assertNotIn(
+                    secret_val, file_text,
+                    f"Vazamento de segredo real ({secret_name}) de config.env detectado no arquivo rastreado {rel_path}!"
+                )
 
     def test_04_tunnels_compose_has_staggered_delays_and_backoff(self):
         """Garante que compose/tunnels/docker-compose.yml possui proteção contra rate limits do zrok."""
@@ -137,6 +174,43 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
             update_content = f.read()
         self.assertIn('docker compose --env-file "$ENV_FILE"', update_content, "homelab_atualizar_stacks.sh deve usar ENV_FILE.")
         self.assertIn('ln -sfn "$ENV_FILE"', update_content, "homelab_atualizar_stacks.sh deve garantir symlink de .env.")
+
+    def test_06_security_hardening_fail_closed_and_permissions(self):
+        """Valida regras de segurança: Fail-Closed no ttyd e zrok, bind local em proxies internos e sanitização CLI."""
+        # 1. ttyd Fail-Closed
+        mgmt_compose = os.path.join(ROOT_DIR, 'compose', 'management', 'docker-compose.yml')
+        with open(mgmt_compose, 'r', encoding='utf-8') as f:
+            mgmt_content = f.read()
+        self.assertIn('SYSTEM_PASSWORD=${SYSTEM_PASSWORD:?', mgmt_content, "ttyd deve exigir SYSTEM_PASSWORD via :? no Compose.")
+        self.assertIn('exit 1', mgmt_content, "ttyd deve abortar com exit 1 caso credenciais estejam vazias (Fail-Closed).")
+        self.assertNotIn('CRED_OPT=""', mgmt_content, "ttyd não deve permitir inicialização sem credenciais (Fail-Open).")
+
+        # 2. Túneis zrok Fail-Closed e ausência de zrok-umbrel
+        tunnels_compose = os.path.join(ROOT_DIR, 'compose', 'tunnels', 'docker-compose.yml')
+        with open(tunnels_compose, 'r', encoding='utf-8') as f:
+            tunnels_content = f.read()
+        self.assertNotIn('zrok-umbrel', tunnels_content, "O painel umbrelOS não deve ser exposto via zrok-umbrel.")
+        self.assertIn('SYSTEM_PASSWORD=${SYSTEM_PASSWORD:?', tunnels_content, "Túneis com Basic Auth devem exigir SYSTEM_PASSWORD.")
+        self.assertIn('KAMILA_PASSWORD=${KAMILA_PASSWORD:?', tunnels_content, "Túneis com Basic Auth devem exigir KAMILA_PASSWORD.")
+
+        # 3. Bind localhost para serviços internos (FlareSolverr e BeTor API) e senha obrigatória no MongoDB
+        arr_compose = os.path.join(ROOT_DIR, 'compose', 'arr-stack', 'docker-compose.yml')
+        with open(arr_compose, 'r', encoding='utf-8') as f:
+            arr_content = f.read()
+        self.assertIn('127.0.0.1:8191:8191', arr_content, "FlareSolverr deve fazer bind apenas em 127.0.0.1.")
+
+        betor_compose = os.path.join(ROOT_DIR, 'compose', 'betor', 'docker-compose.yml')
+        with open(betor_compose, 'r', encoding='utf-8') as f:
+            betor_content = f.read()
+        self.assertIn('127.0.0.1:8005:8000', betor_content, "BeTor API deve fazer bind apenas em 127.0.0.1.")
+        self.assertNotIn('BETOR_MONGO_PASSWORD:-betor', betor_content, "BeTor não deve ter senha fallback fraca hardcoded.")
+
+        # 4. Sanitização contra Command Injection em homelab_restaurar_servicos.sh
+        restore_sh = os.path.join(ROOT_DIR, 'scripts', 'utils', 'homelab_restaurar_servicos.sh')
+        with open(restore_sh, 'r', encoding='utf-8') as f:
+            restore_content = f.read()
+        self.assertIn('^[a-zA-Z0-9_-]+$', restore_content, "homelab_restaurar_servicos.sh deve validar argumentos com regex estrita.")
+        self.assertIn('bash -s -- "$mode" "$arg"', restore_content, "homelab_restaurar_servicos.sh deve passar argumentos posicionais seguros.")
 
 
 if __name__ == '__main__':

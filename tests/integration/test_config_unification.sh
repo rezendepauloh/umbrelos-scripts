@@ -8,8 +8,10 @@ source "${SCRIPT_DIR}/../test_framework.sh"
 
 start_suite "Unificação de Configurações (.env / config.env)" "Validação de symlinks canônicos e ausência de warnings em stacks Docker"
 
-# 1. Verificar se /data/config.env existe e possui as novas variáveis unificadas
+# 1. Verificar se /data/config.env existe, tem permissões seguras (sem leitura para 'others') e possui as variáveis unificadas
 assert_cmd_success "/data/config.env existe no servidor" "test -f /data/config.env" "presente"
+assert_cmd_success "Permissões restritas em /data/config.env (600 ou 640)" "stat -c '%a' /data/config.env | grep -qxE '600|640'" "protegido contra leitura pública"
+assert_cmd_success "Permissões restritas em config.env local do servidor (600 ou ausente)" "test ! -f /home/umbrel/umbrelos-scripts/config.env || stat -c '%a' /home/umbrel/umbrelos-scripts/config.env | grep -qxE '600|640'" "protegido"
 assert_cmd_success "Variável BETOR_MONGO_USER presente" "grep -q '^BETOR_MONGO_USER=' /data/config.env" "configurado"
 assert_cmd_success "Variável BETOR_MONGO_PASSWORD presente" "grep -q '^BETOR_MONGO_PASSWORD=' /data/config.env" "configurado"
 assert_cmd_success "Variável STORAGE_BASE_DIR presente" "grep -q '^STORAGE_BASE_DIR=' /data/config.env" "configurado"

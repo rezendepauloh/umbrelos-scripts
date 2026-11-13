@@ -19,6 +19,7 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
     log_warn "Arquivo 'config.env' não encontrado. Copiando do 'config.env.example'..."
     cp "${SCRIPT_DIR}/config.env.example" "$CONFIG_FILE"
 fi
+chmod 600 "$CONFIG_FILE" 2>/dev/null || true
 
 source "$CONFIG_FILE"
 

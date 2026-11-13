@@ -4,6 +4,8 @@
    server role = standalone server
    security = user
    map to guest = Bad User
+   server min protocol = SMB2
+   restrict anonymous = 2
    dns proxy = no
    log file = /var/log/samba/%m.log
    max log size = 50

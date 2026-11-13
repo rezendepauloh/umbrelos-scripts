@@ -20,7 +20,7 @@ __pycache__/
 id_rsa*
 id_ed25519*
 config/ssl/
-!config/ssl/*.cnf
+!config/ssl/README.md
 !config/ssl/*.example
 
 # Volumes de dados locais das Stacks Docker

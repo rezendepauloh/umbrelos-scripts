@@ -26,6 +26,7 @@ mkdir -p "${LOCAL_DEST}/app_data"
 mkdir -p "${LOCAL_DEST}/system_data"
 mkdir -p "${LOCAL_DEST}/custom_stacks"
 mkdir -p "${LOCAL_DEST}/user_files"
+chmod 750 "${LOCAL_DEST}" "${LOCAL_DEST}/databases" "${LOCAL_DEST}/system_data" 2>/dev/null || true
 
 # 1. DUMP DOS BANCOS DE DADOS
 echo "--> 1/6 Gerando dumps dos bancos de dados..."
