@@ -6,9 +6,22 @@
 # atualizar de forma inteligente as stacks Docker personalizadas no Mini PC
 # (management, arr-stack, tunnels, etc.).
 # Só recria o que realmente tiver atualização de imagem baixada.
+# Uso:
+#   ./scripts/utils/homelab_atualizar_stacks.sh            # Atualiza todas as stacks e limpa imagens órfãs
+#   ./scripts/utils/homelab_atualizar_stacks.sh --dry-run  # Apenas simula e exibe o que seria executado
+#   ./scripts/utils/homelab_atualizar_stacks.sh --no-prune # Atualiza sem remover imagens antigas
 # ==============================================================================
 
 set -euo pipefail
+
+DRY_RUN=false
+PRUNE=true
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run) DRY_RUN=true ;;
+        --no-prune) PRUNE=false ;;
+    esac
+done
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -46,8 +59,13 @@ if [ "$IS_LOCAL" = false ]; then
 fi
 
 execute_update() {
-    bash -s << 'REMOTESCRIPT'
+    local dry_run="$1"
+    local prune="$2"
+    bash -s -- "$dry_run" "$prune" << 'REMOTESCRIPT'
 set -u
+DRY_RUN="${1:-false}"
+PRUNE="${2:-true}"
+
 if [ -f /data/config.env ]; then
     set -a
     source /data/config.env
@@ -78,23 +96,37 @@ for stack in "${STACKS[@]}"; do
     if [ -f "$STACK_DIR/docker-compose.yml" ]; then
         echo -e "\n\033[1;36m[+] Verificando atualizações para a stack: $stack\033[0m"
         cd "$STACK_DIR"
-        
-        # Pull de novas imagens passando as variáveis de ambiente exportadas
-        echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" pull 2>&1 | grep -v 'password for umbrel' || true
-        
-        # Up recreation automática
-        echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" up -d 2>&1 | grep -v 'password for umbrel' || true
+
+        if [ "$DRY_RUN" = "true" ]; then
+            echo "  [dry-run] docker compose --env-file \"$ENV_FILE\" pull"
+            echo "  [dry-run] docker compose --env-file \"$ENV_FILE\" up -d"
+        else
+            # Pull de novas imagens passando as variáveis de ambiente exportadas
+            echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" pull 2>&1 | grep -v 'password for umbrel' || true
+
+            # Up recreation automática
+            echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" up -d 2>&1 | grep -v 'password for umbrel' || true
+        fi
     fi
 done
 
-echo -e "\n\033[1;32m[✔] Todas as stacks customizadas foram verificadas e atualizadas!\033[0m"
+if [ "$DRY_RUN" = "false" ] && [ "$PRUNE" = "true" ]; then
+    echo -e "\n\033[1;36m[+] Removendo imagens órfãs (dangling) antigas...\033[0m"
+    echo "$SYSTEM_PASSWORD" | sudo -S docker image prune -f 2>&1 | grep -v 'password for umbrel' || true
+fi
+
+if [ "$DRY_RUN" = "true" ]; then
+    echo -e "\n\033[1;33m[dry-run] Simulação concluída. Nenhuma alteração foi aplicada.\033[0m"
+else
+    echo -e "\n\033[1;32m[✔] Todas as stacks customizadas foram verificadas e atualizadas!\033[0m"
+fi
 REMOTESCRIPT
 }
 
 if [ "$IS_LOCAL" = true ]; then
-    execute_update
+    execute_update "$DRY_RUN" "$PRUNE"
 else
-    ssh -o LogLevel=ERROR -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" "$(declare -f execute_update); execute_update"
+    ssh -o LogLevel=ERROR -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" "$(declare -f execute_update); execute_update '$DRY_RUN' '$PRUNE'"
 fi
 
 echo -e "\n${GREEN}${BOLD}======================================================================${NC}"
