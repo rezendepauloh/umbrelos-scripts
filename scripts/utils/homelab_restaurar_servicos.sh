@@ -399,6 +399,22 @@ case "\$MODE" in
             done
         fi
 
+        # Checar containers zrok-* parados por share preso no servidor zrok2
+        ZROK_EXITED=\$(docker_cmd ps -a --filter "name=zrok-" --filter "status=exited" --format "{{.Names}}" 2>/dev/null || true)
+        if [ -n "\$ZROK_EXITED" ]; then
+            echo -e "${YELLOW}➡ Containers zrok parados detectados (\$(echo \$ZROK_EXITED | tr '\n' ' ')). Verificando shares presos...${NC}"
+            STUCK_TOKENS=\$(docker_cmd run --rm -v /data/zrok/.zrok2:/home/ziggy/.zrok2 --user 1000:1000 openziti/zrok2:latest overview 2>/dev/null | grep -oE '[a-z0-9]{12}' | sort -u || true)
+            for zc in \$ZROK_EXITED; do
+                USED_TOKEN=\$(docker_cmd logs --tail 10 "\$zc" 2>&1 | grep -oE "in use by share '[a-z0-9]+'" | grep -oE "'[a-z0-9]+'" | tr -d "'" | tail -n 1 || true)
+                if [ -n "\$USED_TOKEN" ]; then
+                    echo -e "${YELLOW}  -> Removendo share preso '\${USED_TOKEN}' para \${zc}...${NC}"
+                    docker_cmd run --rm -v /data/zrok/.zrok2:/home/ziggy/.zrok2 --user 1000:1000 openziti/zrok2:latest delete share "\$USED_TOKEN" >/dev/null 2>&1 || true
+                fi
+                docker_cmd start "\$zc" >/dev/null 2>&1 || true
+                REPAIRED=\$((REPAIRED + 1))
+            done
+        fi
+
         if [ "\$REPAIRED" -eq 0 ]; then
             echo -e "${GREEN}${BOLD}✔ Nenhum serviço caído encontrado! O Homelab já está saudável.${NC}\n"
         else

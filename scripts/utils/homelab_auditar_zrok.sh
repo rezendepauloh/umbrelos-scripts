@@ -68,12 +68,21 @@ test_url "Verifica Diários (Kamila)" "https://diarios-paulo.shares.zrok.io" "$A
 test_url "Investimentos (Paulo)" "https://investimentos-paulo.shares.zrok.io" "$AUTH_PAULO"
 test_url "Investimentos (Kamila)" "https://investimentos-paulo.shares.zrok.io" "$AUTH_KAMILA"
 
-echo -e "\n${CYAN}${BOLD}[2/2] Testando VPN Tailscale Homelab:${NC}"
+echo -e "\n${CYAN}${BOLD}[2/3] Testando VPN Tailscale Homelab:${NC}"
 TAILSCALE_HOST="100.88.159.41"
 if ping -c 1 -W 2 "$TAILSCALE_HOST" >/dev/null 2>&1; then
     printf "  %-32s [ \033[1;32mONLINE (Ping OK)\033[0m ] -> %s\n" "Tailscale Mini PC" "$TAILSCALE_HOST"
 else
     printf "  %-32s [ \033[1;33mINDISPONÍVEL (Ping OFF)\033[0m ] -> %s (Verifique se o Tailscale está ligado no Pop!_OS)\n" "Tailscale Mini PC" "$TAILSCALE_HOST"
+fi
+
+echo -e "\n${CYAN}${BOLD}[3/3] Auditando Containers e Shares no Servidor zrok2 (192.168.0.8):${NC}"
+if ssh -o ConnectTimeout=4 -o BatchMode=yes "umbrel@192.168.0.8" "exit 0" 2>/dev/null; then
+    ssh -o ConnectTimeout=5 "umbrel@192.168.0.8" "source /data/config.env 2>/dev/null && echo \"\$SYSTEM_PASSWORD\" | sudo -S docker ps -a --filter 'name=zrok' --format '  {{.Names}}\t{{.Status}}' 2>/dev/null" || true
+    echo ""
+    ssh -o ConnectTimeout=5 "umbrel@192.168.0.8" "source /data/config.env 2>/dev/null && echo \"\$SYSTEM_PASSWORD\" | sudo -S docker run --rm -v /data/zrok/.zrok2:/home/ziggy/.zrok2 --user 1000:1000 openziti/zrok2:latest overview 2>/dev/null | grep -E 'SHARE TOKEN|karteman|diarios|investimentos|cloud|jellyfin' || true"
+else
+    echo -e "  ${YELLOW}⚠ Mini PC inacessível via SSH para auditar shares zrok2.${NC}"
 fi
 
 echo -e "\n${BLUE}${BOLD}======================================================================${NC}"

@@ -10,6 +10,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./data/dockge:/app/data
       - ../../compose:/opt/stacks
+      - /data/config.env:/data/config.env:ro
     environment:
       - DOCKGE_STACKS_DIR=/opt/stacks
 
