@@ -4,30 +4,30 @@
 
 Todos os serviços contam com certificado SSL wildcard emitido localmente pela nossa Autoridade Certificadora privada (`Homelab Root CA`), permitindo acesso 100% seguro via `https://` sem avisos no navegador.
 
-| Domínio Desejado | Forward Host / Container | Porta Interna | SSL / HTTPS | Websockets | Descrição / Serviço |
-| :--- | :--- | :---: | :---: | :---: | :--- |
-| `https://umbrel.pk.local` | `172.18.0.1` *(host)* | `80` | Ativo 🔒 | Sim ✅ | Dashboard Principal umbrelOS |
-| `https://dockge.pk.local` | `dockge` | `5001` | Ativo 🔒 | Sim ✅ | Gerenciador Docker Stacks |
-| `https://npm.pk.local` | `127.0.0.1` *(NPM)* | `81` | Ativo 🔒 | Sim ✅ | Nginx Proxy Manager Web UI |
-| `https://status.pk.local` | `uptime-kuma` | `3001` | Ativo 🔒 | Sim ✅ | Monitoramento Uptime Kuma |
-| `https://dozzle.pk.local` | `dozzle` | `8080` | Ativo 🔒 | Sim ✅ | Visualizador de Logs em Tempo Real |
-| `https://it.pk.local` *(ou tools)* | `it-tools` | `80` | Ativo 🔒 | Não | Utilitários de TI (IT-Tools) |
-| `https://syncthing.pk.local` | `syncthing` | `8384` | Ativo 🔒 | Não | Sincronização de Arquivos |
-| `https://torrent.pk.local` | `qbittorrent` | `8085` | Ativo 🔒 | Não | Cliente BitTorrent Web |
-| `https://pedidos.pk.local` | `jellyseerr` | `5055` | Ativo 🔒 | Sim ✅ | JellySeerr (Pedidos de Mídia) |
-| `https://prowlarr.pk.local` | `prowlarr` | `9696` | Ativo 🔒 | Não | Gerenciador de Indexadores |
-| `https://jackett.pk.local` | `jackett` | `9117` | Ativo 🔒 | Não | Indexadores Legados |
-| `https://radarr.pk.local` | `radarr` | `7878` | Ativo 🔒 | Não | Automação de Filmes |
-| `https://sonarr.pk.local` | `sonarr` | `8989` | Ativo 🔒 | Não | Automação de Séries |
-| `https://bazarr.pk.local` | `bazarr` | `6767` | Ativo 🔒 | Não | Automação de Legendas |
-| `https://jellyfin.pk.local` | `192.168.0.8` *(host)* | `8096` | Ativo 🔒 | Sim ✅ | Servidor de Streaming Jellyfin |
-| `https://fotos.pk.local` | `192.168.0.8` *(host)* | `2283` | Ativo 🔒 | Sim ✅ | Galeria de Fotos Immich |
-| `https://home.pk.local` | `192.168.0.8` *(host)* | `8123` | Ativo 🔒 | Sim ✅ | Automação Home Assistant |
-| `https://nuvem.pk.local` | `192.168.0.8` *(host)* | `8081` | Ativo 🔒 | Sim ✅ | Nuvem de Arquivos Nextcloud |
-| `https://adguard.pk.local` | `192.168.0.8` *(host)* | `8095` | Ativo 🔒 | Não | DNS Sinkhole AdGuard Home |
-| `https://karteman.pk.local` | `karteman-app` | `8081` | Ativo 🔒 | Sim ✅ | Plataforma Karteman |
-| `https://investimentos.pk.local` | `paulo-investimentos-app` | `8094` | Ativo 🔒 | Sim ✅ | App de Investimentos Pessoais |
-| `https://diarios.pk.local` | `verifica-diarios-app` | `8093` | Ativo 🔒 | Sim ✅ | Robô Verifica Diários Oficiais |
+| Domínio Desejado | Acesso Tailscale | Forward Host / Container | Porta Interna | SSL / HTTPS | Websockets | Descrição / Serviço |
+| :--- | :--- | :--- | :---: | :---: | :---: | :--- |
+| `https://umbrel.pk.local` | `https://umbrel.tail9accc5.ts.net` | `172.18.0.1` *(host)* | `80` | Ativo 🔒 | Sim ✅ | Dashboard Principal umbrelOS |
+| `https://dockge.pk.local` | `http://umbrel.tail9accc5.ts.net:5001` | `dockge` | `5001` | Ativo 🔒 | Sim ✅ | Gerenciador Docker Stacks |
+| `https://npm.pk.local` | `http://umbrel.tail9accc5.ts.net:81` | `127.0.0.1` *(NPM)* | `81` | Ativo 🔒 | Sim ✅ | Nginx Proxy Manager Web UI |
+| `https://dozzle.pk.local` | `http://umbrel.tail9accc5.ts.net:8888` | `dozzle` | `8080` | Ativo 🔒 | Sim ✅ | Visualizador de Logs em Tempo Real |
+| `https://it.pk.local` *(ou tools)* | `http://umbrel.tail9accc5.ts.net:8080` | `it-tools` | `80` | Ativo 🔒 | Não | Utilitários de TI (IT-Tools) |
+| `https://terminal.pk.local` | `http://umbrel.tail9accc5.ts.net:7681` | `ttyd` | `7681` | Ativo 🔒 | Sim ✅ | Terminal Web (ttyd) |
+| `https://syncthing.pk.local` | `http://umbrel.tail9accc5.ts.net:8384` | `syncthing` | `8384` | Ativo 🔒 | Não | Sincronização de Arquivos |
+| `https://torrent.pk.local` | `http://umbrel.tail9accc5.ts.net:8085` | `qbittorrent` | `8085` | Ativo 🔒 | Não | Cliente BitTorrent Web |
+| `https://pedidos.pk.local` | `http://umbrel.tail9accc5.ts.net:5055` | `jellyseerr` | `5055` | Ativo 🔒 | Sim ✅ | JellySeerr (Pedidos de Mídia) |
+| `https://prowlarr.pk.local` | `http://umbrel.tail9accc5.ts.net:9696` | `prowlarr` | `9696` | Ativo 🔒 | Não | Gerenciador de Indexadores |
+| `https://jackett.pk.local` | `http://umbrel.tail9accc5.ts.net:9117` | `jackett` | `9117` | Ativo 🔒 | Não | Indexadores Legados |
+| `https://radarr.pk.local` | `http://umbrel.tail9accc5.ts.net:7878` | `radarr` | `7878` | Ativo 🔒 | Não | Automação de Filmes |
+| `https://sonarr.pk.local` | `http://umbrel.tail9accc5.ts.net:8989` | `sonarr` | `8989` | Ativo 🔒 | Não | Automação de Séries |
+| `https://bazarr.pk.local` | `http://umbrel.tail9accc5.ts.net:6767` | `bazarr` | `6767` | Ativo 🔒 | Não | Automação de Legendas |
+| `https://jellyfin.pk.local` | `http://umbrel.tail9accc5.ts.net:8096` | `192.168.0.8` *(host)* | `8096` | Ativo 🔒 | Sim ✅ | Servidor de Streaming Jellyfin |
+| `https://fotos.pk.local` | `http://umbrel.tail9accc5.ts.net:2283` | `192.168.0.8` *(host)* | `2283` | Ativo 🔒 | Sim ✅ | Galeria de Fotos Immich |
+| `https://home.pk.local` | `http://umbrel.tail9accc5.ts.net:8123` | `192.168.0.8` *(host)* | `8123` | Ativo 🔒 | Sim ✅ | Automação Home Assistant |
+| `https://nuvem.pk.local` | `http://umbrel.tail9accc5.ts.net:8081` | `192.168.0.8` *(host)* | `8081` | Ativo 🔒 | Sim ✅ | Nuvem de Arquivos Nextcloud |
+| `https://adguard.pk.local` | `http://umbrel.tail9accc5.ts.net:8095` | `192.168.0.8` *(host)* | `8095` | Ativo 🔒 | Não | DNS Sinkhole AdGuard Home |
+| `https://karteman.pk.local` | `http://umbrel.tail9accc5.ts.net:8091` | `karteman-app` | `8081` | Ativo 🔒 | Sim ✅ | Plataforma Karteman |
+| `https://investimentos.pk.local` | `http://umbrel.tail9accc5.ts.net:8094` | `192.168.0.8` *(host)* | `8094` | Ativo 🔒 | Sim ✅ | App de Investimentos Pessoais |
+| `https://diarios.pk.local` | `http://umbrel.tail9accc5.ts.net:8093` | `verifica-diarios-app` | `8093` | Ativo 🔒 | Sim ✅ | Robô Verifica Diários Oficiais |
 
 ---
 

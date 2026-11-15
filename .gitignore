@@ -31,3 +31,7 @@ compose/**/data/
 *.log
 temp/
 .DS_Store
+
+# Nginx Proxy Manager (dados sensíveis e chaves privadas)
+config/npm/*.sqlite*
+config/npm/custom_ssl/
