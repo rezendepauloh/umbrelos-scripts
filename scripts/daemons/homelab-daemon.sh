@@ -287,13 +287,37 @@ for j in {1..60}; do
             echo "Samba validado e ativo pós-boot: smbd=$(systemctl is-active smbd), wsdd2=$(systemctl is-active wsdd2)"
         fi
 
-        # 7. Garantir agendamento do Cronjob do BeTor e Timer do Backup Semanal
-        cat << 'CRON_EOF' > /etc/cron.d/betor-sync
-0 */6 * * * root /usr/bin/docker exec prowlarr curl -s -X POST http://betor-scrapyd:6800/schedule.json -d project=betor -d spider=comando-torrents >/dev/null 2>&1
-5 */6 * * * root /usr/bin/docker exec prowlarr curl -s -X POST http://betor-scrapyd:6800/schedule.json -d project=betor -d spider=bludv >/dev/null 2>&1
-CRON_EOF
-        chmod 644 /etc/cron.d/betor-sync
-        echo "Cronjob do BeTor configurado e persistido com sucesso"
+        # 7. Garantir agendamento via Systemd Timer para raspagem periódica do BeTor
+        # (cron nativo do sistema permanece inativo no umbrelOS, por isso usamos systemd timer)
+        rm -f /etc/cron.d/betor-sync 2>/dev/null || true
+        cat << 'BETOR_SVC_EOF' > /etc/systemd/system/homelab-betor-sync.service
+[Unit]
+Description=Sincronizacao Periodica do Catalogo BeTor (API /v1/scrape/)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec prowlarr curl -s -X POST -H "Content-Type: application/json" -d '{"deep": 2}' http://betor-api:8000/v1/scrape/
+User=root
+BETOR_SVC_EOF
+
+        cat << 'BETOR_TMR_EOF' > /etc/systemd/system/homelab-betor-sync.timer
+[Unit]
+Description=Timer a cada 6 horas para atualizar o Catalogo BeTor
+Requires=homelab-betor-sync.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+BETOR_TMR_EOF
+
+        systemctl daemon-reload
+        systemctl enable --now homelab-betor-sync.timer 2>/dev/null || true
+        echo "Timer systemd do BeTor configurado e ativo com sucesso"
 
         # 8. Garantir que o Systemd Timer de Backup Semanal e EPG estejam ativos pós-boot
         if [ -f "/data/bin/homelab-backup-semanal.sh" ]; then

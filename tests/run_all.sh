@@ -46,6 +46,8 @@ run_subsuite "test_samba_services.sh"
 run_subsuite "test_docker_stacks.sh"
 run_subsuite "test_http_endpoints.sh"
 run_subsuite "test_remote_tunnels.sh"
+run_subsuite "test_config_unification.sh"
+run_subsuite "test_betor_arr_hardlinks.sh"
 
 TOTAL_TESTS=$((TESTS_PASSED + TESTS_FAILED + TESTS_SKIPPED))
 

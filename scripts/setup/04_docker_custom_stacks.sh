@@ -133,6 +133,9 @@ search:
         sort: -updated_at
         size: 100
         q: "{{ .Query.Q }}"
+        deep: 1
+        scrape_timeout: 15
+        process_raw_item_timeout: 10
 
   rows:
     selector: $.items
@@ -153,7 +156,7 @@ search:
     download:
       selector: magnet_uri
     title:
-      text: "{{ if .Result._magnet_dn }}{{ .Result._magnet_dn }}{{ else if .Result._torrent_name }}{{ .Result._torrent_name }}{{ else }}Sem Titulo{{ end }}"
+      text: "{{ if .Result._magnet_dn }}{{ .Result._magnet_dn }}{{ else }}{{ .Result._torrent_name }}{{ end }}"
     details:
       selector: provider_url
     infohash:
@@ -174,15 +177,34 @@ search:
         "*": 5000
 EOF
 
-# Rotina diária de raspagem periódica do BeTor (Cronjob a cada 6h)
+# Rotina periódica de raspagem do BeTor (Systemd Timer a cada 6h via API oficial /v1/scrape/)
 log_info "Configurando rotina periódica de raspagem do BeTor..."
-CRON_BETOR="/etc/cron.d/betor-sync"
-cat << 'EOF' > "${CRON_BETOR}"
-# Varredura periódica de lançamentos nacionais no BeTor (a cada 6 horas)
-0 */6 * * * root /usr/bin/docker exec prowlarr curl -s -X POST http://betor-scrapyd:6800/schedule.json -d project=betor -d spider=comando-torrents >/dev/null 2>&1
-5 */6 * * * root /usr/bin/docker exec prowlarr curl -s -X POST http://betor-scrapyd:6800/schedule.json -d project=betor -d spider=bludv >/dev/null 2>&1
+rm -f /etc/cron.d/betor-sync
+cat << 'EOF' > /etc/systemd/system/homelab-betor-sync.service
+[Unit]
+Description=Sincronizacao Periodica do Catalogo BeTor (API /v1/scrape/)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec prowlarr curl -s -X POST -H "Content-Type: application/json" -d '{"deep": 2}' http://betor-api:8000/v1/scrape/
+User=root
 EOF
-chmod 644 "${CRON_BETOR}"
+cat << 'EOF' > /etc/systemd/system/homelab-betor-sync.timer
+[Unit]
+Description=Timer a cada 6 horas para atualizar o Catalogo BeTor
+Requires=homelab-betor-sync.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+systemctl daemon-reload
+systemctl enable --now homelab-betor-sync.timer >/dev/null 2>&1 || true
 
 # Garantir persistência e auto-start das stacks no boot do sistema via Systemd
 log_info "Configurando serviço Systemd homelab-custom-stacks para inicialização automática no boot..."

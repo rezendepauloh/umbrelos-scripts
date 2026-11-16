@@ -27,7 +27,7 @@ Agora sincronizamos o Prowlarr diretamente com o Radarr e Sonarr para que eles r
 
 - **No Sonarr (`http://sonarr.pk.local`):**
   - **Settings ➡️ Media Management:**
-    - **Root Folders:** Adicione `/tv` (que mapeia nativamente para `/home/umbrel/umbrel/external/disk1/media/series`).
+    - **Root Folders:** Adicione `/media/series/` (que mapeia nativamente para `/home/umbrel/umbrel/external/disk1/media/series`).
     - **Season Folder:** Ative a opção de pastas por temporada (`Season {season:00}`). 
       > [!IMPORTANT]
       > O Jellyfin exige que as séries estejam em subpastas de temporada (ex: `Silo/Season 03/ep.mkv`). Se os episódios ficarem soltos na raiz da série, o Jellyfin classifica como *Season Unknown* e bloqueia a reprodução com o erro *"Não foi possível encontrar uma fonte de mídia válida para reproduzir"*.
@@ -42,7 +42,7 @@ Agora sincronizamos o Prowlarr diretamente com o Radarr e Sonarr para que eles r
 
 - **No Radarr (`http://radarr.pk.local`):**
   - **Settings ➡️ Media Management:**
-    - **Root Folders:** Adicione `/movies` (que mapeia nativamente para `/home/umbrel/umbrel/external/disk1/media/movies`).
+    - **Root Folders:** Adicione `/media/movies/` (que mapeia nativamente para `/home/umbrel/umbrel/external/disk1/media/movies`).
   - **Settings ➡️ Download Clients:** Adicione o `qBittorrent` (Host: `qbittorrent`, Port: `8085`).
   - **Settings ➡️ Custom Formats:**
     - Crie o formato `Dual Áudio PT-BR` com a condição **Release Title**: `\b(DUAL|DUBLADO|PT-?BR|BRAZILIAN|PORTUGUESE)\b`.

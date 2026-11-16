@@ -34,7 +34,7 @@ sudo docker logs qbittorrent 2>&1 | grep "temporary password"
 4. Dentro do qBittorrent:
    - Vá no menu: **Ferramentas (Tools)** ⚙️ ➡️ **Opções (Options)** ➡️ aba **Web UI**.
    - Altere o nome de usuário e defina sua nova senha definitiva.
-   - Na aba **Downloads**, confirme que o diretório padrão de download é `/downloads` (que mapeia internamente para `/mnt/storage/media/torrents`).
+   - Na aba **Downloads**, confirme que o diretório padrão de download é `/media/torrents/` (que mapeia internamente para `/home/umbrel/umbrel/external/disk1/media/torrents`).
    - Salve no rodapé.
 
 #### 3.2. Configurar o Prowlarr (`http://prowlarr.pk.local` ou `:9696`)

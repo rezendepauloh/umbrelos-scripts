@@ -11,6 +11,7 @@ services:
       - TORRENTING_PORT=6881
     volumes:
       - ./data/qbittorrent/config:/config
+      - /home/umbrel/umbrel/external/disk1/media:/media
       - /home/umbrel/umbrel/external/disk1/media/torrents:/downloads
     ports:
       - "8085:8085"
@@ -58,8 +59,7 @@ services:
       - TZ=America/Campo_Grande
     volumes:
       - ./data/radarr/config:/config
-      - /home/umbrel/umbrel/external/disk1/media/movies:/movies
-      - /home/umbrel/umbrel/external/disk1/media/torrents:/downloads
+      - /home/umbrel/umbrel/external/disk1/media:/media
     ports:
       - "7878:7878"
     restart: unless-stopped
@@ -74,8 +74,7 @@ services:
       - TZ=America/Campo_Grande
     volumes:
       - ./data/sonarr/config:/config
-      - /home/umbrel/umbrel/external/disk1/media/series:/tv
-      - /home/umbrel/umbrel/external/disk1/media/torrents:/downloads
+      - /home/umbrel/umbrel/external/disk1/media:/media
     ports:
       - "8989:8989"
     restart: unless-stopped
@@ -90,8 +89,7 @@ services:
       - TZ=America/Campo_Grande
     volumes:
       - ./data/bazarr/config:/config
-      - /home/umbrel/umbrel/external/disk1/media/movies:/movies
-      - /home/umbrel/umbrel/external/disk1/media/series:/tv
+      - /home/umbrel/umbrel/external/disk1/media:/media
     ports:
       - "6767:6767"
     restart: unless-stopped

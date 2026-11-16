@@ -52,6 +52,10 @@ class TestHomelabIntegration(unittest.TestCase):
         """Valida a unificação de variáveis (.env symlink para /data/config.env) e ausência de warnings."""
         self._run_sh_test('test_config_unification.sh')
 
+    def test_07_betor_arr_and_hardlinks(self):
+        """Valida BeTor, integração Prowlarr/Radarr/Sonarr/qBittorrent e suporte a hardlinks em /media."""
+        self._run_sh_test('test_betor_arr_hardlinks.sh')
+
 
 if __name__ == '__main__':
     unittest.main()

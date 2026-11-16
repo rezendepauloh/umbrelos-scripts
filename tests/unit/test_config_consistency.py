@@ -212,6 +212,33 @@ class TestConfigAndArchitectureConsistency(unittest.TestCase):
         self.assertIn('^[a-zA-Z0-9_-]+$', restore_content, "homelab_restaurar_servicos.sh deve validar argumentos com regex estrita.")
         self.assertIn('bash -s -- "$mode" "$arg"', restore_content, "homelab_restaurar_servicos.sh deve passar argumentos posicionais seguros.")
 
+    def test_07_betor_workers_and_arr_hardlink_mounts(self):
+        """Garante fila correta do worker BeTor, volume único /media para hardlinks e timer systemd."""
+        betor_compose = os.path.join(ROOT_DIR, 'compose', 'betor', 'docker-compose.yml')
+        with open(betor_compose, 'r', encoding='utf-8') as f:
+            betor_content = f.read()
+        self.assertIn('"-Q", "torrents"', betor_content, "BeTor deve possuir worker consumindo a fila 'torrents'.")
+        self.assertNotIn('"-Q", "api-requests"', betor_content, "BeTor não deve escutar a fila inexistente 'api-requests'.")
+
+        arr_compose = os.path.join(ROOT_DIR, 'compose', 'arr-stack', 'docker-compose.yml')
+        with open(arr_compose, 'r', encoding='utf-8') as f:
+            arr_content = f.read()
+        self.assertEqual(
+            arr_content.count('/home/umbrel/umbrel/external/disk1/media:/media'), 4,
+            "qbittorrent, radarr, sonarr e bazarr devem compartilhar o mount único /media para hardlinks."
+        )
+
+        setup_04 = os.path.join(ROOT_DIR, 'scripts', 'setup', '04_docker_custom_stacks.sh')
+        with open(setup_04, 'r', encoding='utf-8') as f:
+            setup_04_content = f.read()
+        self.assertNotIn('{{ else if', setup_04_content, "betor.yml não deve usar 'else if' incompatível com Cardigann.")
+        self.assertIn('homelab-betor-sync.timer', setup_04_content, "04_docker_custom_stacks.sh deve configurar o timer systemd do BeTor.")
+
+        daemon_sh = os.path.join(ROOT_DIR, 'scripts', 'daemons', 'homelab-daemon.sh')
+        with open(daemon_sh, 'r', encoding='utf-8') as f:
+            daemon_content = f.read()
+        self.assertIn('homelab-betor-sync.timer', daemon_content, "homelab-daemon.sh deve persistir o timer systemd do BeTor.")
+
 
 if __name__ == '__main__':
     unittest.main()
