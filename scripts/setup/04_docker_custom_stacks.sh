@@ -163,6 +163,9 @@ search:
       selector: magnet_xt
     date:
       selector: inserted_at
+      filters:
+        - name: append
+          args: "Z"
     size:
       text: "{{ if .Result._torrent_size }}{{ .Result._torrent_size }}{{ else }}0{{ end }}"
     seeders:
@@ -187,7 +190,7 @@ After=docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/docker exec prowlarr curl -s -X POST -H "Content-Type: application/json" -d '{"deep": 2}' http://betor-api:8000/v1/scrape/
+ExecStart=/usr/bin/docker exec prowlarr curl -s -X POST -H "Content-Type: application/json" -d '{"deep": 1}' http://betor-api:8000/v1/scrape/
 User=root
 EOF
 cat << 'EOF' > /etc/systemd/system/homelab-betor-sync.timer
