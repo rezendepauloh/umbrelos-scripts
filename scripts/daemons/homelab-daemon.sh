@@ -328,8 +328,10 @@ After=network-online.target docker.service
 
 [Service]
 Type=oneshot
+Nice=19
+IOSchedulingClass=idle
 ExecStart=/data/bin/homelab-backup-semanal.sh
-TimeoutStartSec=45min
+TimeoutStartSec=4h
 User=root
 SERVICE_EOF
 

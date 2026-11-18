@@ -16,6 +16,7 @@
 #   ./scripts/utils/homelab_auditar_e_sincronizar_backups.sh         # Auditoria + Sincronização automática
 #   ./scripts/utils/homelab_auditar_e_sincronizar_backups.sh --check # Apenas audita bancos e dados sem sincronizar
 #   ./scripts/utils/homelab_auditar_e_sincronizar_backups.sh --sync  # Força sincronização imediata
+#   ./scripts/utils/homelab_auditar_e_sincronizar_backups.sh --auto  # Modo leve/silencioso para systemd timer no Pop!_OS
 # ==============================================================================
 
 set -euo pipefail
@@ -37,7 +38,11 @@ SERVER_USER="${SERVER_USER:-umbrel}"
 POPOS_HOST="${POPOS_HOST:-192.168.0.16}"
 POPOS_USER="${POPOS_USER:-rezendepauloh}"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
-RETENTION="${BACKUP_RETENTION_COUNT:-7}"
+RETENTION="${BACKUP_RETENTION_COUNT:-${BACKUP_RETENTION_DAYS:-7}}"
+if ! [[ "$RETENTION" =~ ^[0-9]+$ ]] || [[ "$RETENTION" -lt 1 ]]; then
+    RETENTION=7
+fi
+POPOS_BWLIMIT="${POPOS_RSYNC_BWLIMIT:-20000}"
 
 REMOTE_DISK3_DIR="/home/umbrel/umbrel/external/disk3/backups"
 LOCAL_BACKUP_DIR="${POPOS_DEST_DIR:-/mnt/storage_930/Backups_Homelab}"
@@ -47,6 +52,25 @@ if [[ "${1:-}" == "--check" ]]; then
     ACTION_MODE="check"
 elif [[ "${1:-}" == "--sync" ]]; then
     ACTION_MODE="sync"
+elif [[ "${1:-}" == "--auto" ]]; then
+    ACTION_MODE="auto"
+fi
+
+if [[ "$ACTION_MODE" == "auto" ]]; then
+    GREEN=''
+    YELLOW=''
+    RED=''
+    BLUE=''
+    CYAN=''
+    BOLD=''
+    NC=''
+    LOCK_FILE="${XDG_RUNTIME_DIR:-/tmp}/homelab-backup-sync.lock"
+    exec 9>"$LOCK_FILE"
+    if ! flock -n 9; then
+        echo "[$(date)] Sincronização automática já em execução. Saindo."
+        exit 0
+    fi
+    echo "--- Execução automática iniciada em $(date) ---"
 fi
 
 echo -e "${BLUE}${BOLD}==============================================================================${NC}"
@@ -62,7 +86,11 @@ fi
 # 1. Testar conectividade conforme ambiente
 if [ "$IS_LOCAL" = false ]; then
     echo -e "${CYAN}ℹ Testando conexão SSH com o Mini PC (${SERVER_USER}@${SERVER_HOST})...${NC}"
-    if ! ssh -i "${SSH_KEY}" -o ConnectTimeout=4 -o BatchMode=yes "${SERVER_USER}@${SERVER_HOST}" "exit 0" 2>/dev/null; then
+    if ! ssh -i "${SSH_KEY}" -o ConnectTimeout=5 -o BatchMode=yes "${SERVER_USER}@${SERVER_HOST}" "exit 0" 2>/dev/null; then
+        if [[ "$ACTION_MODE" == "auto" ]]; then
+            echo -e "${YELLOW}⚠ Mini PC ${SERVER_HOST} inacessível no momento. Sincronização adiada para o próximo ciclo.${NC}"
+            exit 0
+        fi
         echo -e "${RED}[!] ERRO: Mini PC ${SERVER_HOST} inacessível via SSH.${NC}"
         exit 1
     fi
@@ -77,23 +105,40 @@ else
     fi
 fi
 
-# 2. Obter lista de backups no disk3
+# 2. Obter lista de backups no disk3 (ordem cronológica determinística por nome)
 echo -e "${BLUE}${BOLD}[1/4] Levantando snapshots disponíveis no disk3 (Mini PC):${NC}"
 if [ "$IS_LOCAL" = true ]; then
-    DISK3_BACKUPS_RAW=$(cd "${REMOTE_DISK3_DIR}" 2>/dev/null && ls -dt backup_* 2>/dev/null || true)
+    DISK3_BACKUPS_RAW=$(find "${REMOTE_DISK3_DIR}" -maxdepth 1 -mindepth 1 -type d -name 'backup_*' -printf '%f\n' 2>/dev/null | sort -r || true)
 else
-    DISK3_BACKUPS_RAW=$(ssh -i "${SSH_KEY}" "${SERVER_USER}@${SERVER_HOST}" "
-        if [ -d '${REMOTE_DISK3_DIR}' ]; then
-            cd '${REMOTE_DISK3_DIR}' && ls -dt backup_* 2>/dev/null || true
-        fi
-    ")
+    if [[ "$ACTION_MODE" == "auto" ]]; then
+        # Em modo automático, considera apenas snapshots validados (.backup_complete) para não puxar parciais antigos
+        DISK3_BACKUPS_RAW=$(ssh -i "${SSH_KEY}" -o BatchMode=yes "${SERVER_USER}@${SERVER_HOST}" "
+            if [ -d '${REMOTE_DISK3_DIR}' ]; then
+                for d in \$(find '${REMOTE_DISK3_DIR}' -maxdepth 1 -mindepth 1 -type d -name 'backup_*' -printf '%f\n' 2>/dev/null | sort -r); do
+                    if [ -f '${REMOTE_DISK3_DIR}/'\"\$d\"'/.backup_complete' ]; then
+                        echo \"\$d\"
+                    fi
+                done
+            fi
+        ")
+    else
+        DISK3_BACKUPS_RAW=$(ssh -i "${SSH_KEY}" -o BatchMode=yes "${SERVER_USER}@${SERVER_HOST}" "
+            if [ -d '${REMOTE_DISK3_DIR}' ]; then
+                find '${REMOTE_DISK3_DIR}' -maxdepth 1 -mindepth 1 -type d -name 'backup_*' -printf '%f\n' 2>/dev/null | sort -r || true
+            fi
+        ")
+    fi
 fi
 
 mapfile -t REMOTE_LIST < <(echo "$DISK3_BACKUPS_RAW" | grep '^backup_' || true)
 TOTAL_REMOTE=${#REMOTE_LIST[@]}
 
 if [ "$TOTAL_REMOTE" -eq 0 ]; then
-    echo -e "  ${YELLOW}⚠ Nenhum diretório 'backup_*' localizado no disk3!${NC}"
+    if [[ "$ACTION_MODE" == "auto" ]]; then
+        echo -e "  ${YELLOW}⚠ Nenhum snapshot validado (.backup_complete) localizado no disk3 ainda.${NC}"
+    else
+        echo -e "  ${YELLOW}⚠ Nenhum diretório 'backup_*' localizado no disk3!${NC}"
+    fi
 else
     echo -e "  Encontrados ${BOLD}${TOTAL_REMOTE}${NC} snapshot(s) no disk3:"
     for b in "${REMOTE_LIST[@]}"; do
@@ -101,13 +146,13 @@ else
     done
 fi
 
-# 3. Obter lista de backups no Pop!_OS
+# 3. Obter lista de backups no Pop!_OS (ordem cronológica determinística por nome)
 echo -e "\n${BLUE}${BOLD}[2/4] Levantando snapshots armazenados localmente no Pop!_OS:${NC}"
 if [ "$IS_LOCAL" = false ]; then
     mkdir -p "${LOCAL_BACKUP_DIR}"
-    mapfile -t LOCAL_LIST < <(cd "${LOCAL_BACKUP_DIR}" && ls -dt backup_* 2>/dev/null | grep '^backup_' || true)
+    mapfile -t LOCAL_LIST < <(find "${LOCAL_BACKUP_DIR}" -maxdepth 1 -mindepth 1 -type d -name 'backup_*' -printf '%f\n' 2>/dev/null | sort -r || true)
 else
-    LOCAL_RAW=$(ssh -i "${SSH_KEY}" -o ConnectTimeout=3 -o BatchMode=yes "${POPOS_USER}@${POPOS_HOST}" "cd '${LOCAL_BACKUP_DIR}' 2>/dev/null && ls -dt backup_* 2>/dev/null" 2>/dev/null || true)
+    LOCAL_RAW=$(ssh -i "${SSH_KEY}" -o ConnectTimeout=3 -o BatchMode=yes "${POPOS_USER}@${POPOS_HOST}" "find '${LOCAL_BACKUP_DIR}' -maxdepth 1 -mindepth 1 -type d -name 'backup_*' -printf '%f\n' 2>/dev/null | sort -r" 2>/dev/null || true)
     mapfile -t LOCAL_LIST < <(echo "$LOCAL_RAW" | grep '^backup_' || true)
 fi
 TOTAL_LOCAL=${#LOCAL_LIST[@]}
@@ -123,7 +168,7 @@ fi
 
 # 4. Auditoria de Integridade: Bancos de Dados E Dados Brutos (Immich & Nextcloud)
 LATEST_DISK3="${REMOTE_LIST[0]:-}"
-if [ -n "$LATEST_DISK3" ]; then
+if [ -n "$LATEST_DISK3" ] && [[ "$ACTION_MODE" != "auto" ]]; then
     echo -e "\n${BLUE}${BOLD}[3/4] Auditoria Detalhada do Snapshot Mais Recente (${LATEST_DISK3}):${NC}"
     
     AUDIT_SCRIPT='
@@ -268,63 +313,86 @@ fi
 
 # 6. Sincronização Puxando do Mini PC para o Pop!_OS (ou empurrando do Mini PC para o Pop!_OS)
 if [ "$TOTAL_MISSING" -gt 0 ]; then
-    echo -e "\n${BOLD}${YELLOW}Iniciando sincronização completa (Bancos + Dados brutos) para o Pop!_OS via rsync...${NC}"
-    
+    echo -e "\n${BOLD}${YELLOW}Iniciando sincronização leve (nice/ionice + bwlimit=${POPOS_BWLIMIT} KB/s) para o Pop!_OS via rsync...${NC}"
+
+    RSYNC_UI_ARGS=(-a --delete "--bwlimit=${POPOS_BWLIMIT}")
+    if [[ "$ACTION_MODE" != "auto" ]]; then
+        RSYNC_UI_ARGS+=(--progress)
+    fi
+
     # Processar do mais antigo para o mais recente para preservar cadeias de hardlink
     for (( idx=${#MISSING_LOCAL[@]}-1 ; idx>=0 ; idx-- )) ; do
         target_snap="${MISSING_LOCAL[idx]}"
         echo -e "\n${CYAN}==> Sincronizando: ${BOLD}${target_snap}${NC}..."
         
         if [ "$IS_LOCAL" = false ]; then
-            # Rodando no Pop!_OS: Puxa do Mini PC
-            PREV_LOCAL=$(cd "${LOCAL_BACKUP_DIR}" && ls -dt backup_* 2>/dev/null | grep -v "${target_snap}" | head -n 1 || true)
-            LINK_DEST_FLAG=""
+            # Rodando no Pop!_OS: Puxa do Mini PC com staging atômico
+            PREV_LOCAL=$(find "${LOCAL_BACKUP_DIR}" -maxdepth 1 -mindepth 1 -type d -name 'backup_*' -printf '%f\n' 2>/dev/null | grep -v "^${target_snap}$" | sort -r | head -n 1 || true)
+            LINK_DEST_ARGS=()
             if [ -n "$PREV_LOCAL" ] && [ -d "${LOCAL_BACKUP_DIR}/${PREV_LOCAL}" ]; then
                 echo -e "    Deduplicação ativada via hardlinks com: ${BOLD}${PREV_LOCAL}${NC}"
-                LINK_DEST_FLAG="--link-dest=${LOCAL_BACKUP_DIR}/${PREV_LOCAL}"
+                LINK_DEST_ARGS=("--link-dest=${LOCAL_BACKUP_DIR}/${PREV_LOCAL}")
             fi
 
-            mkdir -p "${LOCAL_BACKUP_DIR}/${target_snap}"
+            STAGE_LOCAL="${LOCAL_BACKUP_DIR}/.inprogress_${target_snap}"
+            FINAL_LOCAL="${LOCAL_BACKUP_DIR}/${target_snap}"
+            mkdir -p "${STAGE_LOCAL}"
 
-            if ! rsync -avz --progress --exclude="*.mongodb*" --exclude="diagnostic.data*" --exclude="journal*" $LINK_DEST_FLAG \
+            rc=0
+            nice -n 19 ionice -c3 rsync "${RSYNC_UI_ARGS[@]}" \
+                --exclude="*.mongodb*" --exclude="diagnostic.data*" --exclude="journal*" \
+                "${LINK_DEST_ARGS[@]}" \
                 --rsync-path="sudo /usr/bin/rsync" \
-                -e "ssh -i ${SSH_KEY}" \
+                -e "ssh -i ${SSH_KEY} -o BatchMode=yes" \
                 "${SERVER_USER}@${SERVER_HOST}:${REMOTE_DISK3_DIR}/${target_snap}/" \
-                "${LOCAL_BACKUP_DIR}/${target_snap}/"; then
-                echo -e "    ${RED}✖ Falha na sincronização do snapshot ${target_snap}!${NC}"
+                "${STAGE_LOCAL}/" || rc=$?
+
+            if [[ "$rc" -ne 0 && "$rc" -ne 24 ]]; then
+                echo -e "    ${RED}✖ Falha na sincronização do snapshot ${target_snap} (código ${rc})!${NC}"
                 exit 1
             fi
+            touch "${STAGE_LOCAL}/.backup_complete"
+            mv "${STAGE_LOCAL}" "${FINAL_LOCAL}"
         else
-            # Rodando no Mini PC: Empurra para o Pop!_OS
-            ssh -i "${SSH_KEY}" "${POPOS_USER}@${POPOS_HOST}" "mkdir -p '${LOCAL_BACKUP_DIR}/${target_snap}'"
+            # Rodando no Mini PC: Empurra para o Pop!_OS com staging atômico
+            STAGE_REMOTE="${LOCAL_BACKUP_DIR}/.inprogress_${target_snap}"
+            FINAL_REMOTE="${LOCAL_BACKUP_DIR}/${target_snap}"
+            ssh -i "${SSH_KEY}" -o BatchMode=yes "${POPOS_USER}@${POPOS_HOST}" "mkdir -p '${STAGE_REMOTE}'"
             
-            PREV_REMOTE=$(ssh -i "${SSH_KEY}" "${POPOS_USER}@${POPOS_HOST}" "cd '${LOCAL_BACKUP_DIR}' 2>/dev/null && ls -dt backup_* 2>/dev/null | grep -v '${target_snap}' | head -n 1" || true)
-            LINK_DEST_FLAG=""
+            PREV_REMOTE=$(ssh -i "${SSH_KEY}" -o BatchMode=yes "${POPOS_USER}@${POPOS_HOST}" \
+                "find '${LOCAL_BACKUP_DIR}' -maxdepth 1 -mindepth 1 -type d -name 'backup_*' -printf '%f\n' 2>/dev/null | grep -v '^${target_snap}$' | sort -r | head -n 1" || true)
+            LINK_DEST_ARGS=()
             if [ -n "$PREV_REMOTE" ]; then
                 echo -e "    Deduplicação remota ativada via hardlinks com: ${BOLD}${PREV_REMOTE}${NC}"
-                LINK_DEST_FLAG="--link-dest=${LOCAL_BACKUP_DIR}/${PREV_REMOTE}"
+                LINK_DEST_ARGS=("--link-dest=${LOCAL_BACKUP_DIR}/${PREV_REMOTE}")
             fi
 
-            if ! echo "${SYSTEM_PASSWORD:-}" | sudo -S rsync -avz --progress --exclude="*.mongodb*" --exclude="diagnostic.data*" --exclude="journal*" $LINK_DEST_FLAG \
-                -e "ssh -i ${SSH_KEY}" \
+            rc=0
+            echo "${SYSTEM_PASSWORD:-}" | sudo -S nice -n 19 ionice -c3 rsync "${RSYNC_UI_ARGS[@]}" \
+                --exclude="*.mongodb*" --exclude="diagnostic.data*" --exclude="journal*" \
+                "${LINK_DEST_ARGS[@]}" \
+                -e "ssh -i ${SSH_KEY} -o BatchMode=yes" \
                 "${REMOTE_DISK3_DIR}/${target_snap}/" \
-                "${POPOS_USER}@${POPOS_HOST}:${LOCAL_BACKUP_DIR}/${target_snap}/"; then
-                echo -e "    ${RED}✖ Falha na sincronização do snapshot ${target_snap}!${NC}"
+                "${POPOS_USER}@${POPOS_HOST}:${STAGE_REMOTE}/" || rc=$?
+
+            if [[ "$rc" -ne 0 && "$rc" -ne 24 ]]; then
+                echo -e "    ${RED}✖ Falha na sincronização do snapshot ${target_snap} (código ${rc})!${NC}"
                 exit 1
             fi
+            ssh -i "${SSH_KEY}" -o BatchMode=yes "${POPOS_USER}@${POPOS_HOST}" \
+                "touch '${STAGE_REMOTE}/.backup_complete' && mv '${STAGE_REMOTE}' '${FINAL_REMOTE}'"
         fi
 
         echo -e "    ${GREEN}✔ Snapshot ${target_snap} sincronizado com sucesso no Pop!_OS!${NC}"
     done
 fi
 
-# 7. Política Estrita de Retenção (Mantém os 7 mais recentes; o 8º é eliminado)
+# 7. Política Estrita de Retenção (Mantém os N mais recentes; o N+1 é eliminado)
 echo -e "\n${BLUE}${BOLD}Aplicando política de retenção estrita (${RETENTION} backups mantidos):${NC}"
 
 # No Pop!_OS:
 if [ "$IS_LOCAL" = false ]; then
-    cd "${LOCAL_BACKUP_DIR}"
-    mapfile -t UPDATED_LOCAL < <(ls -dt backup_* 2>/dev/null | grep '^backup_' || true)
+    mapfile -t UPDATED_LOCAL < <(find "${LOCAL_BACKUP_DIR}" -maxdepth 1 -mindepth 1 -type d -name 'backup_*' -printf '%f\n' 2>/dev/null | sort -r || true)
     LOCAL_COUNT=${#UPDATED_LOCAL[@]}
 
     if [ "$LOCAL_COUNT" -gt "$RETENTION" ]; then
@@ -332,24 +400,24 @@ if [ "$IS_LOCAL" = false ]; then
         echo -e "  ${YELLOW}➡ Pop!_OS possui ${LOCAL_COUNT} backups (limite: ${RETENTION}). Excluindo ${EXCESS} mais antigo(s)...${NC}"
         for (( i=RETENTION; i<LOCAL_COUNT; i++ )); do
             old_dir="${UPDATED_LOCAL[i]}"
-            if [ -n "$old_dir" ] && [ -d "$old_dir" ]; then
+            if [ -n "$old_dir" ] && [ -d "${LOCAL_BACKUP_DIR}/${old_dir}" ]; then
                 echo -e "     🗑 Removendo localmente: ${BOLD}${old_dir}${NC}"
-                rm -rf "$old_dir"
+                nice -n 19 ionice -c3 rm -rf "${LOCAL_BACKUP_DIR}/${old_dir}"
             fi
         done
     else
         echo -e "  ✔ Pop!_OS dentro da cota de retenção (${LOCAL_COUNT}/${RETENTION})."
     fi
 else
-    ssh -i "${SSH_KEY}" -o ConnectTimeout=3 "${POPOS_USER}@${POPOS_HOST}" "
-        cd '${LOCAL_BACKUP_DIR}' 2>/dev/null || exit 0
-        UPDATED=\$(ls -dt backup_* 2>/dev/null | grep '^backup_' || true)
+    ssh -i "${SSH_KEY}" -o ConnectTimeout=3 -o BatchMode=yes "${POPOS_USER}@${POPOS_HOST}" "
+        [ -d '${LOCAL_BACKUP_DIR}' ] || exit 0
+        UPDATED=\$(find '${LOCAL_BACKUP_DIR}' -maxdepth 1 -mindepth 1 -type d -name 'backup_*' -printf '%f\n' 2>/dev/null | sort -r || true)
         LCOUNT=\$(echo \"\$UPDATED\" | grep -c '^backup_' || true)
         RET='${RETENTION}'
         if [ \"\$LCOUNT\" -gt \"\$RET\" ]; then
             echo \"  ➡ Pop!_OS possui \$LCOUNT backups. Removendo excedentes antigos...\"
             echo \"\$UPDATED\" | tail -n +\"\$((RET + 1))\" | while read -r ob; do
-                [ -n \"\$ob\" ] && rm -rf \"\$ob\"
+                [ -n \"\$ob\" ] && nice -n 19 ionice -c3 rm -rf \"${LOCAL_BACKUP_DIR}/\$ob\"
             done
         fi
     " 2>/dev/null || true
@@ -358,16 +426,16 @@ fi
 # No Mini PC (disk3):
 CLEANUP_DISK3_SCRIPT='
     source /data/config.env 2>/dev/null || true
-    cd "'"${REMOTE_DISK3_DIR}"'" 2>/dev/null || exit 0
-    BACKUPS=$(ls -dt backup_* 2>/dev/null | grep "^backup_" || true)
+    [ -d "'"${REMOTE_DISK3_DIR}"'" ] || exit 0
+    BACKUPS=$(find "'"${REMOTE_DISK3_DIR}"'" -maxdepth 1 -mindepth 1 -type d -name "backup_*" -printf "%f\n" 2>/dev/null | sort -r || true)
     COUNT=$(echo "$BACKUPS" | grep -c "^backup_" || true)
     RET="'"${RETENTION}"'"
     if [ "$COUNT" -gt "$RET" ]; then
         echo "  ➡ disk3 possui $COUNT backups. Removendo excedentes antigos..."
         echo "$BACKUPS" | tail -n +"$((RET + 1))" | while read -r ob; do
-            if [ -n "$ob" ] && [ -d "$ob" ]; then
+            if [ -n "$ob" ] && [ -d "'"${REMOTE_DISK3_DIR}"'/$ob" ]; then
                 echo "     🗑 Removendo disk3: $ob"
-                rm -rf "$ob"
+                nice -n 19 ionice -c3 rm -rf "'"${REMOTE_DISK3_DIR}"'/$ob"
             fi
         done
     else

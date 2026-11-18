@@ -24,6 +24,7 @@ Docs/
 │   │   ├── 07_etapa5_home_assistant.md
 │   │   └── 08_dominios_npm_rotinas_e_energia.md
 │   ├── guia_autonomia_e_manutencao_remota.md # Scripts em 1 comando (Dashboard, Limpeza, Rollback)
+│   ├── backups_retencao_e_sincronizacao.md   # Backups no disk3, retenção (7) e sync leve no Pop!_OS
 │   ├── recuperacao_hds_e_samba.md            # Diagnóstico e remontagem por UUID pós-queda de energia
 │   ├── pos_instalacao_portas_e_testes.md     # Índice de transição e resumo de portas
 │   ├── acesso_mobile_android_samsung.md      # Acesso via smartphones Samsung / Android
@@ -54,6 +55,7 @@ Docs/
 ## 🚀 Acessos Rápidos Mais Utilizados
 
 ### 1. Rotinas Diárias e Manutenção
+- **Como funciona o backup (disk3 + Pop!_OS) e retenção de 7 snapshots:** [Backups, Retenção e Sincronização](guias/backups_retencao_e_sincronizacao.md)
 - **Como monitorar a saúde do Mini PC:** [Guia de Autonomia e Manutenção Remota](guias/guia_autonomia_e_manutencao_remota.md#1-painel-de-saúde-do-hardware-e-discos)
 - **O que fazer se um HD sumir ou cair o cabo USB:** [Recuperação de HDs e Samba](guias/recuperacao_hds_e_samba.md)
 - **Como rodar testes de integridade:** [Suíte de Testes e Integridade](testes/suite_de_testes_e_integridade.md)
