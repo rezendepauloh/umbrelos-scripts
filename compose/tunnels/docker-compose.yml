@@ -57,7 +57,7 @@ services:
         fi
         sleep 40;
         echo "zrok-investimentos iniciando...";
-        exec zrok2 share public http://paulo-investimentos-app:8094 -n public:investimentos-paulo --basic-auth "$${SAMBA_USER_1}:$${SYSTEM_PASSWORD}" --basic-auth "$${SAMBA_USER_2}:$${KAMILA_PASSWORD}" --headless
+        exec zrok2 share public http://192.168.0.8:8094 -n public:investimentos-paulo --basic-auth "$${SAMBA_USER_1}:$${SYSTEM_PASSWORD}" --basic-auth "$${SAMBA_USER_2}:$${KAMILA_PASSWORD}" --headless
     volumes:
       - /data/zrok/.zrok2:/home/ziggy/.zrok2
 
