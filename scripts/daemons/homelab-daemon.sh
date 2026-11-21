@@ -50,6 +50,79 @@ LOG="/data/homelab-daemon.log"
 touch "$LOG" 2>/dev/null || true
 chmod 640 "$LOG" 2>/dev/null || true
 exec >> "$LOG" 2>&1
+
+# Funções reutilizáveis de persistência de montagens (Nextcloud e Jellyfin)
+ensure_jellyfin_bind_mount() {
+    local src="/home/umbrel/umbrel/external/disk1/media"
+    local dst="/home/umbrel/umbrel/home/Downloads/media"
+    if [ -d "$src" ] && [ -d "$dst" ]; then
+        if ! mountpoint -q "$dst" 2>/dev/null; then
+            echo "Aplicando bind mount de mídia para o Jellyfin ($src -> $dst)..."
+            mount --bind "$src" "$dst" || true
+            if docker ps -q -f name=jellyfin_server_1 | grep -q .; then
+                docker restart jellyfin_server_1 || true
+            fi
+        fi
+    fi
+}
+
+ensure_immich_bind_mount() {
+    local src="/home/umbrel/umbrel/external/disk2/immich/upload"
+    local dst="/home/umbrel/umbrel/app-data/immich/data/upload"
+    if [ -d "$src" ] && [ -d "$dst" ]; then
+        if ! mountpoint -q "$dst" 2>/dev/null; then
+            echo "Aplicando bind mount nativo do Immich ($src -> $dst)..."
+            mount --bind "$src" "$dst" || true
+            if docker ps -q -f name=immich_server_1 | grep -q .; then
+                docker restart immich_server_1 || true
+            fi
+        fi
+    fi
+}
+
+ensure_nextcloud_volumes() {
+    local nc_compose="/home/umbrel/umbrel/app-data/nextcloud/docker-compose.yml"
+    if [ -f "$nc_compose" ]; then
+        if ! grep -q "/storage/users" "$nc_compose" 2>/dev/null; then
+            echo "Reinjetando mapeamentos do disk2 no docker-compose.yml do Nextcloud..."
+            if grep -q "target: /var/www/html" "$nc_compose"; then
+                # Sintaxe moderna umbrelOS 2.0 (bind mount estruturado)
+                sed -i '/create_host_path: false/a \      - /home/umbrel/umbrel/external/disk2/users:/storage/users\n      - /home/umbrel/umbrel/external/disk2/shared:/storage/shared' "$nc_compose"
+            else
+                # Sintaxe clássica umbrelOS 1.x
+                sed -i '/\${APP_DATA_DIR}\/data\/nextcloud:\/var\/www\/html/a \      - /home/umbrel/umbrel/external/disk2/users:/storage/users\n      - /home/umbrel/umbrel/external/disk2/shared:/storage/shared' "$nc_compose"
+            fi
+            if docker ps -q -f name=nextcloud_web_1 | grep -q .; then
+                echo "Recriando containers do Nextcloud com os novos volumes..."
+                (
+                    [ -f "/home/umbrel/umbrel/.env" ] && source "/home/umbrel/umbrel/.env" 2>/dev/null || true
+                    SCRIPT_UMBREL_ROOT="/home/umbrel/umbrel" \
+                    SCRIPT_DOCKER_FRAGMENTS="/opt/umbreld/source/modules/apps/legacy-compat" \
+                    SCRIPT_APP_REPO_DIR="/home/umbrel/umbrel/app-stores/getumbrel-umbrel-apps-github-53f74447/nextcloud" \
+                    SCRIPT_APP_DATA_ROOTS='{"nextcloud":"/home/umbrel/umbrel/app-data/nextcloud/data"}' \
+                    BITCOIN_NETWORK="${BITCOIN_NETWORK:-mainnet}" \
+                    TOR_PROXY_IP="${TOR_PROXY_IP:-10.21.21.11}" \
+                    TOR_PROXY_PORT="${TOR_PROXY_PORT:-9050}" \
+                    TOR_PASSWORD="${TOR_PASSWORD:-}" \
+                    TOR_HASHED_PASSWORD="${TOR_HASHED_PASSWORD:-}" \
+                    REMOTE_TOR_ACCESS="${REMOTE_TOR_ACCESS:-false}" \
+                    bash /opt/umbreld/source/modules/apps/legacy-compat/app-script restart nextcloud || true
+                )
+            fi
+        fi
+    fi
+}
+
+# Modo rápido: apenas reaplica volumes do Nextcloud e bind mounts do Jellyfin e Immich (sem reiniciar rede/Samba/stacks)
+if [ "${1:-}" = "--fix-mounts" ]; then
+    echo "=== HOMELAB FIX-MOUNTS INICIADO: $(date) ==="
+    ensure_jellyfin_bind_mount
+    ensure_immich_bind_mount
+    ensure_nextcloud_volumes
+    echo "=== HOMELAB FIX-MOUNTS CONCLUÍDO: $(date) ==="
+    exit 0
+fi
+
 echo "=== HOMELAB DAEMON INICIADO: $(date) ==="
 
 # 0.1 Garantir Fuso Horário Local (America/Campo_Grande)
@@ -194,36 +267,7 @@ for j in {1..60}; do
         docker network create homelab_network 2>/dev/null || true
 
         # Garantir persistência dos volumes externos no Nextcloud (resiste a updates da App Store do Umbrel e umbrelOS 2.0)
-        NC_COMPOSE="/home/umbrel/umbrel/app-data/nextcloud/docker-compose.yml"
-        if [ -f "$NC_COMPOSE" ]; then
-            if ! grep -q "/storage/users" "$NC_COMPOSE" 2>/dev/null; then
-                echo "Reinjetando mapeamentos do disk2 no docker-compose.yml do Nextcloud..."
-                if grep -q "target: /var/www/html" "$NC_COMPOSE"; then
-                    # Sintaxe moderna umbrelOS 2.0 (bind mount estruturado)
-                    sed -i '/create_host_path: false/a \      - /home/umbrel/umbrel/external/disk2/users:/storage/users\n      - /home/umbrel/umbrel/external/disk2/shared:/storage/shared' "$NC_COMPOSE"
-                else
-                    # Sintaxe clássica umbrelOS 1.x
-                    sed -i '/\${APP_DATA_DIR}\/data\/nextcloud:\/var\/www\/html/a \      - /home/umbrel/umbrel/external/disk2/users:/storage/users\n      - /home/umbrel/umbrel/external/disk2/shared:/storage/shared' "$NC_COMPOSE"
-                fi
-                if docker ps -q -f name=nextcloud_web_1 | grep -q .; then
-                    echo "Recriando containers do Nextcloud com os novos volumes..."
-                    (
-                        [ -f "/home/umbrel/umbrel/.env" ] && source "/home/umbrel/umbrel/.env" 2>/dev/null || true
-                        SCRIPT_UMBREL_ROOT="/home/umbrel/umbrel" \
-                        SCRIPT_DOCKER_FRAGMENTS="/opt/umbreld/source/modules/apps/legacy-compat" \
-                        SCRIPT_APP_REPO_DIR="/home/umbrel/umbrel/app-stores/getumbrel-umbrel-apps-github-53f74447/nextcloud" \
-                        SCRIPT_APP_DATA_ROOTS='{"nextcloud":"/home/umbrel/umbrel/app-data/nextcloud/data"}' \
-                        BITCOIN_NETWORK="${BITCOIN_NETWORK:-mainnet}" \
-                        TOR_PROXY_IP="${TOR_PROXY_IP:-10.21.21.11}" \
-                        TOR_PROXY_PORT="${TOR_PROXY_PORT:-9050}" \
-                        TOR_PASSWORD="${TOR_PASSWORD:-}" \
-                        TOR_HASHED_PASSWORD="${TOR_HASHED_PASSWORD:-}" \
-                        REMOTE_TOR_ACCESS="${REMOTE_TOR_ACCESS:-false}" \
-                        bash /opt/umbreld/source/modules/apps/legacy-compat/app-script restart nextcloud || true
-                    )
-                fi
-            fi
-        fi
+        ensure_nextcloud_volumes
 
         # Reiniciar Jellyfin e Nextcloud para ler montagens dos HDs
         if docker ps -q -f name=jellyfin_server_1 | grep -q .; then

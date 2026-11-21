@@ -98,14 +98,26 @@ for stack in "${STACKS[@]}"; do
         cd "$STACK_DIR"
 
         if [ "$DRY_RUN" = "true" ]; then
-            echo "  [dry-run] docker compose --env-file \"$ENV_FILE\" pull"
-            echo "  [dry-run] docker compose --env-file \"$ENV_FILE\" up -d"
+            svc_imgs=$(echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" config --format json 2>/dev/null | grep -v 'password for umbrel' | python3 -c 'import sys, json; d=json.load(sys.stdin); print("\n".join(f"{k}|{v.get(\"image\",\"\")}" for k,v in d.get("services",{}).items() if v.get("image")))' 2>/dev/null || true)
+            while IFS='|' read -r svc img; do
+                [ -z "$svc" ] && continue
+                local_digest=$(echo "$SYSTEM_PASSWORD" | sudo -S docker image inspect --format '{{index .RepoDigests 0}}' "$img" 2>/dev/null | grep -v 'password for umbrel' | awk -F'@' '{print $2}' | cut -c1-19 || echo "não-baixada")
+                remote_digest=$(echo "$SYSTEM_PASSWORD" | sudo -S docker manifest inspect "$img" 2>/dev/null | grep -v 'password for umbrel' | grep -m1 '"digest"' | sed -E 's/.*"digest": *"([^"]+)".*/\1/' | cut -c1-19 || true)
+                if [ -z "$remote_digest" ]; then
+                    echo -e "  \033[1;33m[?]\033[0m $svc ($img) — local: ${local_digest:-nenhuma} | remoto: inacessível"
+                elif [ "$local_digest" = "$remote_digest" ]; then
+                    echo -e "  \033[0;32m[OK]\033[0m $svc ($img) — já atualizado ($local_digest)"
+                else
+                    echo -e "  \033[1;36m[UPDATE]\033[0m $svc ($img) — atual: ${local_digest:-nenhuma} -> remoto: $remote_digest"
+                fi
+            done <<< "$svc_imgs"
         else
-            # Pull de novas imagens passando as variáveis de ambiente exportadas
-            echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" pull 2>&1 | grep -v 'password for umbrel' || true
-
-            # Up recreation automática
-            echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" up -d 2>&1 | grep -v 'password for umbrel' || true
+            services=$(echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" config --services 2>/dev/null | grep -v 'password for umbrel' || true)
+            for svc in $services; do
+                echo -e "  \033[1;34m-> Serviço:\033[0m $svc"
+                echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" pull "$svc" 2>&1 | grep -v 'password for umbrel' || true
+                echo "$SYSTEM_PASSWORD" | sudo -S -E docker compose --env-file "$ENV_FILE" up -d --no-deps "$svc" 2>&1 | grep -v 'password for umbrel' || true
+            done
         fi
     fi
 done
